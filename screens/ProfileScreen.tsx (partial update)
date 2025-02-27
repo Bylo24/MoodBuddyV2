@@ -1,5 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Alert, ActivityIndicator, ScrollView, Modal, Switch } from 'react-native';
+import { 
+  StyleSheet, 
+  View, 
+  Text, 
+  TouchableOpacity, 
+  Alert, 
+  ActivityIndicator, 
+  ScrollView, 
+  Modal, 
+  Switch,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+  Keyboard
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme/theme';
 import { getCurrentUser } from '../services/authService';
@@ -21,7 +35,13 @@ export default function ProfileScreen({ onClose, onLogout }: ProfileScreenProps)
   const [averageMood, setAverageMood] = useState<number | null>(null);
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
   const [privacyModalVisible, setPrivacyModalVisible] = useState(false);
+  const [editProfileModalVisible, setEditProfileModalVisible] = useState(false);
   const [currentLanguage, setCurrentLanguage] = useState('English');
+  
+  // Edit profile state
+  const [editName, setEditName] = useState('');
+  const [editBio, setEditBio] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
   
   // Privacy settings
   const [dataSharing, setDataSharing] = useState(false);
@@ -44,6 +64,12 @@ export default function ProfileScreen({ onClose, onLogout }: ProfileScreenProps)
       try {
         // Try to get stored display name first
         const storedName = await AsyncStorage.getItem('user_display_name');
+        
+        // Load saved bio
+        const storedBio = await AsyncStorage.getItem('user_bio');
+        if (storedBio) {
+          setEditBio(storedBio);
+        }
         
         // Load saved language preference
         const savedLanguage = await AsyncStorage.getItem('user_language');
@@ -72,9 +98,11 @@ export default function ProfileScreen({ onClose, onLogout }: ProfileScreenProps)
           // Use stored name if available, otherwise extract from email
           if (storedName) {
             setUserName(storedName);
+            setEditName(storedName);
           } else {
             const name = user.email ? user.email.split('@')[0] : 'User';
             setUserName(name);
+            setEditName(name);
           }
           
           setEmail(user.email || '');
@@ -96,6 +124,48 @@ export default function ProfileScreen({ onClose, onLogout }: ProfileScreenProps)
     
     loadUserData();
   }, []);
+  
+  // Save profile changes
+  const saveProfileChanges = async () => {
+    Keyboard.dismiss();
+    
+    if (!editName.trim()) {
+      Alert.alert('Invalid Name', 'Please enter a valid display name');
+      return;
+    }
+    
+    setIsSaving(true);
+    
+    try {
+      // Save display name
+      await AsyncStorage.setItem('user_display_name', editName.trim());
+      
+      // Save bio if provided
+      if (editBio.trim()) {
+        await AsyncStorage.setItem('user_bio', editBio.trim());
+      } else {
+        await AsyncStorage.removeItem('user_bio');
+      }
+      
+      // Update state
+      setUserName(editName.trim());
+      
+      // Close modal
+      setEditProfileModalVisible(false);
+      
+      // Show confirmation
+      Alert.alert(
+        'Profile Updated',
+        'Your profile has been successfully updated.',
+        [{ text: 'OK' }]
+      );
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      Alert.alert('Error', 'Failed to update profile. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
   
   // Save privacy settings
   const savePrivacySettings = async () => {
@@ -243,7 +313,13 @@ export default function ProfileScreen({ onClose, onLogout }: ProfileScreenProps)
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Account</Text>
           
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={() => {
+              setEditName(userName);
+              setEditProfileModalVisible(true);
+            }}
+          >
             <Ionicons name="person-outline" size={24} color={theme.colors.text} />
             <Text style={styles.menuItemText}>Edit Profile</Text>
             <Ionicons name="chevron-forward" size={20} color={theme.colors.subtext} />
@@ -453,10 +529,10 @@ export default function ProfileScreen({ onClose, onLogout }: ProfileScreenProps)
               </View>
               
               <TouchableOpacity 
-                style={styles.privacySaveButton}
+                style={styles.saveButton}
                 onPress={savePrivacySettings}
               >
-                <Text style={styles.privacySaveButtonText}>Save Settings</Text>
+                <Text style={styles.saveButtonText}>Save Settings</Text>
               </TouchableOpacity>
               
               <Text style={styles.privacyFooter}>
@@ -466,6 +542,97 @@ export default function ProfileScreen({ onClose, onLogout }: ProfileScreenProps)
             </ScrollView>
           </View>
         </View>
+      </Modal>
+      
+      {/* Edit Profile Modal */}
+      <Modal
+        visible={editProfileModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setEditProfileModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.modalOverlay}
+        >
+          <View style={[styles.modalContainer, styles.editProfileModalContainer]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Edit Profile</Text>
+              <TouchableOpacity 
+                style={styles.modalCloseButton}
+                onPress={() => setEditProfileModalVisible(false)}
+              >
+                <Ionicons name="close" size={24} color={theme.colors.text} />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView 
+              style={styles.modalList}
+              keyboardShouldPersistTaps="handled"
+            >
+              <View style={styles.editProfileSection}>
+                <View style={styles.editProfileAvatarContainer}>
+                  <View style={styles.editProfileAvatar}>
+                    <Text style={styles.editProfileAvatarText}>
+                      {editName.charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
+                  <TouchableOpacity style={styles.editProfileAvatarButton}>
+                    <Ionicons name="camera" size={20} color="white" />
+                  </TouchableOpacity>
+                </View>
+                
+                <View style={styles.inputContainer}>
+                  <Text style={styles.inputLabel}>Display Name</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={editName}
+                    onChangeText={setEditName}
+                    placeholder="Enter your display name"
+                    placeholderTextColor={theme.colors.subtext}
+                    autoCapitalize="words"
+                  />
+                </View>
+                
+                <View style={styles.inputContainer}>
+                  <Text style={styles.inputLabel}>Email</Text>
+                  <View style={styles.disabledInput}>
+                    <Text style={styles.disabledInputText}>{email}</Text>
+                  </View>
+                  <Text style={styles.inputNote}>
+                    Email cannot be changed
+                  </Text>
+                </View>
+                
+                <View style={styles.inputContainer}>
+                  <Text style={styles.inputLabel}>Bio</Text>
+                  <TextInput
+                    style={[styles.input, styles.textArea]}
+                    value={editBio}
+                    onChangeText={setEditBio}
+                    placeholder="Tell us a bit about yourself"
+                    placeholderTextColor={theme.colors.subtext}
+                    multiline
+                    numberOfLines={4}
+                    textAlignVertical="top"
+                  />
+                </View>
+                
+                <TouchableOpacity 
+                  style={styles.saveButton}
+                  onPress={saveProfileChanges}
+                  disabled={isSaving}
+                >
+                  {isSaving ? (
+                    <ActivityIndicator color="white" size="small" />
+                  ) : (
+                    <Text style={styles.saveButtonText}>Save Changes</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
@@ -633,6 +800,10 @@ const styles = StyleSheet.create({
     width: '90%',
     maxHeight: '80%',
   },
+  editProfileModalContainer: {
+    width: '90%',
+    maxHeight: '90%',
+  },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -707,7 +878,7 @@ const styles = StyleSheet.create({
     color: theme.colors.subtext,
     lineHeight: 20,
   },
-  privacySaveButton: {
+  saveButton: {
     backgroundColor: theme.colors.primary,
     borderRadius: 12,
     padding: 16,
@@ -716,7 +887,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     ...theme.shadows.medium,
   },
-  privacySaveButtonText: {
+  saveButtonText: {
     color: 'white',
     fontSize: 16,
     fontWeight: theme.fontWeights.bold,
@@ -728,5 +899,75 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     paddingHorizontal: 16,
     lineHeight: 18,
+  },
+  // Edit profile styles
+  editProfileSection: {
+    padding: 8,
+  },
+  editProfileAvatarContainer: {
+    alignItems: 'center',
+    marginVertical: 16,
+    position: 'relative',
+  },
+  editProfileAvatar: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: theme.colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  editProfileAvatarText: {
+    fontSize: 40,
+    fontWeight: theme.fontWeights.bold,
+    color: 'white',
+  },
+  editProfileAvatarButton: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: theme.colors.accent,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...theme.shadows.small,
+  },
+  inputContainer: {
+    marginBottom: 16,
+  },
+  inputLabel: {
+    fontSize: 16,
+    fontWeight: theme.fontWeights.medium,
+    color: theme.colors.text,
+    marginBottom: 8,
+  },
+  input: {
+    backgroundColor: theme.colors.card,
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    color: theme.colors.text,
+    ...theme.shadows.small,
+  },
+  textArea: {
+    minHeight: 120,
+    textAlignVertical: 'top',
+  },
+  disabledInput: {
+    backgroundColor: theme.colors.card + '80',
+    borderRadius: 12,
+    padding: 16,
+  },
+  disabledInputText: {
+    fontSize: 16,
+    color: theme.colors.subtext,
+  },
+  inputNote: {
+    fontSize: 12,
+    color: theme.colors.subtext,
+    marginTop: 4,
+    marginLeft: 4,
   },
 });
