@@ -8,7 +8,7 @@ import QuoteComponent from '../components/QuoteComponent';
 import Header from '../components/Header';
 import ProfileModal from '../components/ProfileModal';
 import { MoodRating } from '../types';
-import { getTodayMoodEntry, getRecentMoodEntries, getMoodStreak, getWeeklyAverageMood, getCurrentWeekMoodEntries } from '../services/moodService';
+import { getTodayMoodEntry, getRecentMoodEntries, getMoodStreak, getWeeklyAverageMood, getCurrentWeekMoodEntries, getTodayDate } from '../services/moodService';
 import { getCurrentUser, isAuthenticated } from '../services/authService';
 import { recommendedActivities } from '../data/mockData';
 
@@ -29,6 +29,7 @@ export default function HomeScreen({ onLogout }: HomeScreenProps) {
   const [weeklyMoodEntries, setWeeklyMoodEntries] = useState<any[]>([]);
   const [todayMood, setTodayMood] = useState<MoodRating | null>(null);
   const [isSliderDisabled, setIsSliderDisabled] = useState(false);
+  const [lastCheckedDate, setLastCheckedDate] = useState<string>(getTodayDate());
   
   // State for mood trend graph refresh
   const [trendGraphKey, setTrendGraphKey] = useState(0);
@@ -61,6 +62,9 @@ export default function HomeScreen({ onLogout }: HomeScreenProps) {
           
           // Load mood data
           await refreshMoodData();
+          
+          // Set the last checked date
+          setLastCheckedDate(getTodayDate());
         }
       } catch (error) {
         console.error('Error loading user data:', error);
@@ -72,11 +76,22 @@ export default function HomeScreen({ onLogout }: HomeScreenProps) {
     loadUserData();
   }, []);
   
-  // Listen for app state changes to refresh quote when app comes to foreground
+  // Check for date changes when app comes to foreground
   useEffect(() => {
     const subscription = AppState.addEventListener('change', nextAppState => {
       if (nextAppState === 'active') {
-        // App has come to the foreground, refresh quote
+        // App has come to the foreground
+        const currentDate = getTodayDate();
+        
+        // Check if the date has changed since last check
+        if (currentDate !== lastCheckedDate) {
+          console.log('Date has changed since last check. Resetting mood selection.');
+          setSelectedMood(null);
+          setTodayMood(null);
+          setLastCheckedDate(currentDate);
+        }
+        
+        // Refresh quote
         setQuoteKey(Date.now());
         
         // Also refresh mood data
@@ -87,7 +102,7 @@ export default function HomeScreen({ onLogout }: HomeScreenProps) {
     return () => {
       subscription.remove();
     };
-  }, []);
+  }, [lastCheckedDate]);
   
   // Calculate weekly average when mood changes
   useEffect(() => {
@@ -103,7 +118,7 @@ export default function HomeScreen({ onLogout }: HomeScreenProps) {
     const entries = [...weeklyMoodEntries];
     
     // Get today's date in YYYY-MM-DD format
-    const today = new Date().toISOString().split('T')[0];
+    const today = getTodayDate();
     
     // Find if today's entry is already in the list
     const todayIndex = entries.findIndex(entry => entry.date === today);

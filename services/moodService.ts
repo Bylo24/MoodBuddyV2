@@ -40,6 +40,8 @@ export const getMoodEntryForDate = async (date: string): Promise<MoodEntry | nul
       return null;
     }
     
+    console.log(`Querying mood entry for date: ${date} and user: ${user.id}`);
+    
     const { data, error } = await supabase
       .from('mood_entries')
       .select('*')
@@ -50,12 +52,14 @@ export const getMoodEntryForDate = async (date: string): Promise<MoodEntry | nul
     if (error) {
       if (error.code === 'PGRST116') {
         // No rows returned - this is not an error for us
+        console.log(`No mood entry found for date: ${date}`);
         return null;
       }
       console.error('Error fetching mood entry:', error);
       return null;
     }
     
+    console.log(`Found mood entry for date ${date}:`, data);
     return data as MoodEntry;
   } catch (error) {
     console.error('Unexpected error in getMoodEntryForDate:', error);
@@ -65,7 +69,9 @@ export const getMoodEntryForDate = async (date: string): Promise<MoodEntry | nul
 
 // Get mood entry for today
 export const getTodayMoodEntry = async (): Promise<MoodEntry | null> => {
-  return getMoodEntryForDate(getTodayDate());
+  const today = getTodayDate();
+  console.log(`Getting mood entry for today: ${today}`);
+  return getMoodEntryForDate(today);
 };
 
 // Save mood entry for today
@@ -78,12 +84,13 @@ export const saveTodayMood = async (rating: MoodRating, note?: string): Promise<
     }
     
     const today = getTodayDate();
+    console.log(`Saving mood for today (${today}): ${rating}`);
     
     // Check if an entry already exists for today
     const existingEntry = await getMoodEntryForDate(today);
     
     if (existingEntry) {
-      console.log('Updating existing mood entry for today');
+      console.log('Updating existing mood entry for today:', existingEntry);
       // Update existing entry
       const { data, error } = await supabase
         .from('mood_entries')
@@ -97,6 +104,7 @@ export const saveTodayMood = async (rating: MoodRating, note?: string): Promise<
         return null;
       }
       
+      console.log('Successfully updated mood entry:', data);
       return data as MoodEntry;
     } else {
       console.log('Creating new mood entry for today');
@@ -114,6 +122,7 @@ export const saveTodayMood = async (rating: MoodRating, note?: string): Promise<
         return null;
       }
       
+      console.log('Successfully created new mood entry:', data);
       return data as MoodEntry;
     }
   } catch (error) {

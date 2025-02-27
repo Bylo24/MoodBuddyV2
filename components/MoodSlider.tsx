@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, Text, View, Animated, Alert } from 'react-native';
+import { StyleSheet, Text, View, Animated, Alert, ToastAndroid, Platform } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { MoodRating } from '../types';
 import { theme } from '../theme/theme';
@@ -43,6 +43,16 @@ export default function MoodSlider({
   
   // Get current mood option based on value
   const currentMood = value ? moodOptions.find(option => option.rating === value) : null;
+  
+  // Show success message
+  const showSuccessMessage = (message: string) => {
+    if (Platform.OS === 'android') {
+      ToastAndroid.show(message, ToastAndroid.SHORT);
+    } else {
+      // For iOS, we could use a custom toast component or Alert
+      console.log(message);
+    }
+  };
   
   // Animate emoji when mood changes
   useEffect(() => {
@@ -120,11 +130,20 @@ export default function MoodSlider({
     // Save to database
     try {
       setIsLoading(true);
+      
+      // Check if a mood entry exists for today
+      const existingEntry = await getTodayMoodEntry();
+      const isUpdate = !!existingEntry;
+      
+      // Save the mood
       const savedEntry = await saveTodayMood(moodRating);
       
       if (savedEntry) {
         setIsSaved(true);
         console.log('Mood saved successfully:', savedEntry);
+        
+        // Show success message
+        showSuccessMessage("Mood saved for today!");
         
         // Call the onMoodSaved callback to refresh parent component data
         if (onMoodSaved) {
@@ -148,7 +167,8 @@ export default function MoodSlider({
     <View style={styles.container}>
       {value === null ? (
         <View style={styles.emptyStateContainer}>
-          <Text style={styles.emptyStateText}>Move the slider to select your mood</Text>
+          <Text style={styles.emptyStateText}>How are you feeling today?</Text>
+          <Text style={styles.emptyStateSubText}>Move the slider to select your mood</Text>
         </View>
       ) : null}
       
@@ -168,15 +188,17 @@ export default function MoodSlider({
       
       <View style={styles.labelContainer}>
         {moodOptions.map((option) => (
-          <Text 
-            key={option.rating} 
-            style={[
-              styles.sliderLabel,
-              value === option.rating && { color: option.color, fontWeight: theme.fontWeights.bold }
-            ]}
-          >
-            {option.rating}
-          </Text>
+          <View key={option.rating} style={styles.labelItem}>
+            <Text style={styles.labelEmoji}>{option.emoji}</Text>
+            <Text 
+              style={[
+                styles.sliderLabel,
+                value === option.rating && { color: option.color, fontWeight: theme.fontWeights.bold }
+              ]}
+            >
+              {option.rating}
+            </Text>
+          </View>
         ))}
       </View>
       
@@ -232,6 +254,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     marginBottom: 16,
   },
+  labelItem: {
+    alignItems: 'center',
+  },
+  labelEmoji: {
+    fontSize: 16,
+    marginBottom: 4,
+  },
   sliderLabel: {
     fontSize: 14,
     color: theme.colors.subtext,
@@ -263,12 +292,18 @@ const styles = StyleSheet.create({
   },
   emptyStateContainer: {
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   emptyStateText: {
+    fontSize: 16,
+    color: theme.colors.text,
+    fontWeight: theme.fontWeights.semibold,
+  },
+  emptyStateSubText: {
     fontSize: 14,
     color: theme.colors.subtext,
     fontStyle: 'italic',
+    marginTop: 4,
   },
   noMoodText: {
     fontSize: 18,
