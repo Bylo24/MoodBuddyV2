@@ -1,18 +1,32 @@
-// Add this somewhere in your JSX, perhaps at the top of the screen
+// Add this somewhere in your UI for testing
 <TouchableOpacity 
   style={{
     position: 'absolute',
-    top: 10,
-    right: 10,
-    backgroundColor: theme.colors.error,
+    bottom: 20,
+    right: 20,
+    backgroundColor: 'red',
     padding: 10,
     borderRadius: 8,
     zIndex: 999,
   }}
   onPress={() => {
-    console.log('Direct logout button pressed');
-    onLogout();
+    console.log('Emergency logout button pressed');
+    Alert.alert(
+      'Emergency Logout',
+      'Are you sure you want to log out?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Log Out', 
+          style: 'destructive',
+          onPress: () => {
+            console.log('Emergency logout confirmed');
+            onLogout();
+          }
+        }
+      ]
+    );
   }}
 >
-  <Text style={{ color: 'white', fontWeight: 'bold' }}>Sign Out</Text>
+  <Text style={{ color: 'white', fontWeight: 'bold' }}>Emergency Logout</Text>
 </TouchableOpacity>

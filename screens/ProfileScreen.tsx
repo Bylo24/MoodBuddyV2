@@ -2,10 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, Alert, ActivityIndicator, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme/theme';
-import { getCurrentUser } from '../services/authService';
+import { getCurrentUser, signOut } from '../services/authService';
 import { getMoodStreak, getAverageMood } from '../services/moodService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { supabase } from '../utils/supabaseClient';
 
 interface ProfileScreenProps {
   onClose: () => void;
@@ -24,10 +23,12 @@ export default function ProfileScreen({ onClose, onLogout }: ProfileScreenProps)
     const loadUserData = async () => {
       setIsLoading(true);
       try {
+        // Try to get stored display name first
         const storedName = await AsyncStorage.getItem('user_display_name');
         
         const user = await getCurrentUser();
         if (user) {
+          // Use stored name if available, otherwise extract from email
           if (storedName) {
             setUserName(storedName);
           } else {
@@ -55,51 +56,57 @@ export default function ProfileScreen({ onClose, onLogout }: ProfileScreenProps)
     loadUserData();
   }, []);
   
-  // New simplified sign out function
-  const handleSignOut = () => {
+  const handleSignOut = async () => {
     Alert.alert(
       'Sign Out',
       'Are you sure you want to sign out?',
       [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Sign Out', 
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Sign Out',
           style: 'destructive',
           onPress: async () => {
             try {
               setIsSigningOut(true);
+              console.log('User confirmed sign out, proceeding...');
               
-              // Close the modal first
+              // First close the modal to prevent UI issues
               onClose();
               
-              // Wait for modal to close
+              // Add a small delay to allow the modal to close
               setTimeout(async () => {
                 try {
-                  // Clear AsyncStorage
-                  await AsyncStorage.multiRemove([
-                    'user_display_name',
-                    'supabase.auth.token',
-                    'supabase.auth.refreshToken',
-                    'supabase.auth.expires_at'
-                  ]);
+                  await signOut();
+                  console.log('Sign out successful, calling onLogout callback');
                   
-                  // Sign out from Supabase
-                  await supabase.auth.signOut();
+                  // Clear any stored user data
+                  try {
+                    await AsyncStorage.removeItem('user_display_name');
+                    console.log('Cleared user_display_name from AsyncStorage');
+                  } catch (storageError) {
+                    console.error('Error clearing user data:', storageError);
+                  }
                   
-                  // Call the onLogout callback
+                  // Call the onLogout callback to update the app state
                   onLogout();
                 } catch (error) {
                   console.error('Error during sign out:', error);
                   Alert.alert('Error', 'Failed to sign out. Please try again.');
+                  setIsSigningOut(false);
                 }
               }, 300);
             } catch (error) {
               console.error('Error in sign out process:', error);
+              Alert.alert('Error', 'Failed to sign out. Please try again.');
               setIsSigningOut(false);
             }
-          }
-        }
-      ]
+          },
+        },
+      ],
+      { cancelable: true }
     );
   };
   
@@ -153,9 +160,60 @@ export default function ProfileScreen({ onClose, onLogout }: ProfileScreenProps)
           </View>
         </View>
         
-        {/* Rest of your profile content */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Account</Text>
+          
+          <TouchableOpacity style={styles.menuItem}>
+            <Ionicons name="person-outline" size={24} color={theme.colors.text} />
+            <Text style={styles.menuItemText}>Edit Profile</Text>
+            <Ionicons name="chevron-forward" size={20} color={theme.colors.subtext} />
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={styles.menuItem}>
+            <Ionicons name="notifications-outline" size={24} color={theme.colors.text} />
+            <Text style={styles.menuItemText}>Notifications</Text>
+            <Ionicons name="chevron-forward" size={20} color={theme.colors.subtext} />
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={styles.menuItem}>
+            <Ionicons name="lock-closed-outline" size={24} color={theme.colors.text} />
+            <Text style={styles.menuItemText}>Privacy</Text>
+            <Ionicons name="chevron-forward" size={20} color={theme.colors.subtext} />
+          </TouchableOpacity>
+        </View>
         
-        {/* Sign Out Button */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Preferences</Text>
+          
+          <TouchableOpacity style={styles.menuItem}>
+            <Ionicons name="color-palette-outline" size={24} color={theme.colors.text} />
+            <Text style={styles.menuItemText}>Appearance</Text>
+            <Ionicons name="chevron-forward" size={20} color={theme.colors.subtext} />
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={styles.menuItem}>
+            <Ionicons name="language-outline" size={24} color={theme.colors.text} />
+            <Text style={styles.menuItemText}>Language</Text>
+            <Ionicons name="chevron-forward" size={20} color={theme.colors.subtext} />
+          </TouchableOpacity>
+        </View>
+        
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Support</Text>
+          
+          <TouchableOpacity style={styles.menuItem}>
+            <Ionicons name="help-circle-outline" size={24} color={theme.colors.text} />
+            <Text style={styles.menuItemText}>Help & Support</Text>
+            <Ionicons name="chevron-forward" size={20} color={theme.colors.subtext} />
+          </TouchableOpacity>
+          
+          <TouchableOpacity style={styles.menuItem}>
+            <Ionicons name="information-circle-outline" size={24} color={theme.colors.text} />
+            <Text style={styles.menuItemText}>About</Text>
+            <Ionicons name="chevron-forward" size={20} color={theme.colors.subtext} />
+          </TouchableOpacity>
+        </View>
+        
         <TouchableOpacity 
           style={styles.signOutButton}
           onPress={handleSignOut}
@@ -169,22 +227,6 @@ export default function ProfileScreen({ onClose, onLogout }: ProfileScreenProps)
               <Text style={styles.signOutText}>Sign Out</Text>
             </>
           )}
-        </TouchableOpacity>
-        
-        {/* Direct Sign Out Button */}
-        <TouchableOpacity 
-          style={[styles.signOutButton, { marginTop: 16, backgroundColor: theme.colors.error }]}
-          onPress={() => {
-            // Direct sign out without confirmation
-            onClose();
-            setTimeout(() => {
-              supabase.auth.signOut();
-              onLogout();
-            }, 300);
-          }}
-          disabled={isSigningOut}
-        >
-          <Text style={[styles.signOutText, { color: 'white' }]}>Direct Sign Out</Text>
         </TouchableOpacity>
       </ScrollView>
     </View>
@@ -305,7 +347,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginTop: 8,
-    marginBottom: 16,
+    marginBottom: 32,
     ...theme.shadows.small,
   },
   signOutText: {

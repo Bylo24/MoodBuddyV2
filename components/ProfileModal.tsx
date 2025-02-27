@@ -1,7 +1,6 @@
 import React from 'react';
-import { Modal, StyleSheet, View, Animated, Dimensions, TouchableOpacity, Text } from 'react-native';
+import { Modal, StyleSheet, View, Animated, Dimensions } from 'react-native';
 import ProfileScreen from '../screens/ProfileScreen';
-import { theme } from '../theme/theme';
 
 interface ProfileModalProps {
   visible: boolean;
@@ -31,10 +30,14 @@ export default function ProfileModal({ visible, onClose, onLogout }: ProfileModa
     }
   }, [visible, slideAnim]);
   
-  // Direct logout handler
-  const handleDirectLogout = () => {
+  // Create a direct logout handler
+  const handleLogout = () => {
+    console.log('Logout triggered in ProfileModal');
+    // Close the modal first
     onClose();
+    // Then call the onLogout callback
     setTimeout(() => {
+      console.log('Calling onLogout from ProfileModal');
       onLogout();
     }, 300);
   };
@@ -47,14 +50,6 @@ export default function ProfileModal({ visible, onClose, onLogout }: ProfileModa
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
-        {/* Add a direct logout button at the top */}
-        <TouchableOpacity 
-          style={styles.directLogoutButton}
-          onPress={handleDirectLogout}
-        >
-          <Text style={styles.directLogoutText}>Direct Sign Out</Text>
-        </TouchableOpacity>
-        
         <Animated.View 
           style={[
             styles.modalContainer,
@@ -63,7 +58,7 @@ export default function ProfileModal({ visible, onClose, onLogout }: ProfileModa
         >
           <ProfileScreen 
             onClose={onClose} 
-            onLogout={onLogout} 
+            onLogout={handleLogout} 
           />
         </Animated.View>
       </View>
@@ -83,19 +78,5 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     overflow: 'hidden',
-  },
-  directLogoutButton: {
-    position: 'absolute',
-    top: 40,
-    right: 20,
-    backgroundColor: theme.colors.error,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    zIndex: 1000,
-  },
-  directLogoutText: {
-    color: 'white',
-    fontWeight: 'bold',
   },
 });
