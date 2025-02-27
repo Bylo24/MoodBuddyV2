@@ -16,7 +16,7 @@ export default function HomeScreen() {
   const [selectedMood, setSelectedMood] = useState<MoodRating>(3);
   
   // State to force quote refresh
-  const [quoteKey, setQuoteKey] = useState(0);
+  const [quoteKey, setQuoteKey] = useState(Date.now());
   
   // Get the most recent mood entry
   const latestMood = recentMoodEntries[0];
@@ -31,8 +31,8 @@ export default function HomeScreen() {
   useEffect(() => {
     const subscription = AppState.addEventListener('change', nextAppState => {
       if (nextAppState === 'active') {
-        // App has come to the foreground, refresh quote
-        setQuoteKey(prevKey => prevKey + 1);
+        // App has come to the foreground, refresh quote with a new timestamp
+        setQuoteKey(Date.now());
       }
     });
 
