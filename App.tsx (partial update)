@@ -1,7 +1,7 @@
 // Handle logout
 const handleLogout = async () => {
   try {
-    console.log('Logging out...');
+    console.log('Logging out in App.tsx...');
     setIsLoading(true); // Show loading indicator during logout
     
     // Clear any stored user data
@@ -14,15 +14,12 @@ const handleLogout = async () => {
       console.error('Error clearing user data:', storageError);
     }
     
-    // Sign out from Supabase
-    await signOut();
-    console.log('Logout successful, updating UI');
-    
     // Reset state and navigate to login
     setUserName('');
     setAppState('login');
+    console.log('App state set to login');
   } catch (error) {
-    console.error('Error signing out:', error);
+    console.error('Error in App.tsx logout handler:', error);
     Alert.alert(
       'Sign Out Error',
       'There was a problem signing out. Please try again.',

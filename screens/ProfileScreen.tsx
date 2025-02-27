@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme/theme';
 import { getCurrentUser, signOut } from '../services/authService';
 import { getMoodStreak, getAverageMood } from '../services/moodService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface ProfileScreenProps {
   onClose: () => void;
@@ -14,6 +15,7 @@ export default function ProfileScreen({ onClose, onLogout }: ProfileScreenProps)
   const [userName, setUserName] = useState<string>('');
   const [email, setEmail] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const [streak, setStreak] = useState(0);
   const [averageMood, setAverageMood] = useState<number | null>(null);
   
@@ -21,11 +23,19 @@ export default function ProfileScreen({ onClose, onLogout }: ProfileScreenProps)
     const loadUserData = async () => {
       setIsLoading(true);
       try {
+        // Try to get stored display name first
+        const storedName = await AsyncStorage.getItem('user_display_name');
+        
         const user = await getCurrentUser();
         if (user) {
-          // Extract name from email or use default
-          const name = user.email ? user.email.split('@')[0] : 'User';
-          setUserName(name);
+          // Use stored name if available, otherwise extract from email
+          if (storedName) {
+            setUserName(storedName);
+          } else {
+            const name = user.email ? user.email.split('@')[0] : 'User';
+            setUserName(name);
+          }
+          
           setEmail(user.email || '');
           
           // Load streak
@@ -60,11 +70,38 @@ export default function ProfileScreen({ onClose, onLogout }: ProfileScreenProps)
           style: 'destructive',
           onPress: async () => {
             try {
-              await signOut();
-              onLogout();
+              setIsSigningOut(true);
+              console.log('User confirmed sign out, proceeding...');
+              
+              // First close the modal to prevent UI issues
+              onClose();
+              
+              // Add a small delay to allow the modal to close
+              setTimeout(async () => {
+                try {
+                  await signOut();
+                  console.log('Sign out successful, calling onLogout callback');
+                  
+                  // Clear any stored user data
+                  try {
+                    await AsyncStorage.removeItem('user_display_name');
+                    console.log('Cleared user_display_name from AsyncStorage');
+                  } catch (storageError) {
+                    console.error('Error clearing user data:', storageError);
+                  }
+                  
+                  // Call the onLogout callback to update the app state
+                  onLogout();
+                } catch (error) {
+                  console.error('Error during sign out:', error);
+                  Alert.alert('Error', 'Failed to sign out. Please try again.');
+                  setIsSigningOut(false);
+                }
+              }, 300);
             } catch (error) {
-              console.error('Error signing out:', error);
+              console.error('Error in sign out process:', error);
               Alert.alert('Error', 'Failed to sign out. Please try again.');
+              setIsSigningOut(false);
             }
           },
         },
@@ -88,6 +125,7 @@ export default function ProfileScreen({ onClose, onLogout }: ProfileScreenProps)
         <TouchableOpacity 
           style={styles.closeButton}
           onPress={onClose}
+          disabled={isSigningOut}
         >
           <Ionicons name="close" size={28} color={theme.colors.text} />
         </TouchableOpacity>
@@ -179,9 +217,16 @@ export default function ProfileScreen({ onClose, onLogout }: ProfileScreenProps)
         <TouchableOpacity 
           style={styles.signOutButton}
           onPress={handleSignOut}
+          disabled={isSigningOut}
         >
-          <Ionicons name="log-out-outline" size={24} color={theme.colors.error} />
-          <Text style={styles.signOutText}>Sign Out</Text>
+          {isSigningOut ? (
+            <ActivityIndicator size="small" color={theme.colors.error} />
+          ) : (
+            <>
+              <Ionicons name="log-out-outline" size={24} color={theme.colors.error} />
+              <Text style={styles.signOutText}>Sign Out</Text>
+            </>
+          )}
         </TouchableOpacity>
       </ScrollView>
     </View>
