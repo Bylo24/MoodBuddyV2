@@ -34,7 +34,9 @@ export default function MoodTrendGraph({
   }, [days]);
   
   // Take only the most recent entries up to the specified number of days
-  const recentEntries = moodEntries.slice(0, days).reverse();
+  const recentEntries = [...moodEntries].sort((a, b) => 
+    new Date(a.date).getTime() - new Date(b.date).getTime()
+  ).slice(-days);
   
   // Calculate if mood is improving
   const isImproving = recentEntries.length >= 2 && 

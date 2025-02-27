@@ -8,6 +8,7 @@ import { getTodayMoodEntry, saveTodayMood, isToday, canEditMood } from '../servi
 interface MoodSliderProps {
   value: MoodRating;
   onValueChange: (value: MoodRating) => void;
+  onMoodSaved?: () => void; // New callback for when mood is saved
   disabled?: boolean;
 }
 
@@ -21,6 +22,7 @@ interface MoodOption {
 export default function MoodSlider({ 
   value, 
   onValueChange,
+  onMoodSaved,
   disabled = false
 }: MoodSliderProps) {
   const [scaleAnim] = useState(new Animated.Value(1));
@@ -89,6 +91,11 @@ export default function MoodSlider({
       setIsLoading(true);
       await saveTodayMood(moodRating);
       setIsSaved(true);
+      
+      // Call the onMoodSaved callback to refresh parent component data
+      if (onMoodSaved) {
+        onMoodSaved();
+      }
     } catch (error) {
       console.error('Error saving mood:', error);
       Alert.alert('Error', 'Failed to save your mood. Please try again.');

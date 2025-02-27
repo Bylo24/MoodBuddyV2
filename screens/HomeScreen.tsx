@@ -25,6 +25,9 @@ export default function HomeScreen() {
   const [todayMood, setTodayMood] = useState<MoodRating | null>(null);
   const [isSliderDisabled, setIsSliderDisabled] = useState(false);
   
+  // State for mood trend graph refresh
+  const [trendGraphKey, setTrendGraphKey] = useState(0);
+  
   // State for profile modal
   const [profileModalVisible, setProfileModalVisible] = useState(false);
   
@@ -51,19 +54,7 @@ export default function HomeScreen() {
           setUserName(name);
           
           // Load mood data
-          const todayEntry = await getTodayMoodEntry();
-          if (todayEntry) {
-            setTodayMood(todayEntry.rating);
-            setSelectedMood(todayEntry.rating);
-          }
-          
-          // Load streak
-          const currentStreak = await getMoodStreak();
-          setStreak(currentStreak);
-          
-          // Load average mood
-          const avgMood = await getAverageMood(7);
-          setAverageMood(avgMood);
+          await refreshMoodData();
         }
       } catch (error) {
         console.error('Error loading user data:', error);
@@ -111,6 +102,9 @@ export default function HomeScreen() {
       // Load average mood
       const avgMood = await getAverageMood(7);
       setAverageMood(avgMood);
+      
+      // Force mood trend graph to refresh
+      setTrendGraphKey(prev => prev + 1);
     } catch (error) {
       console.error('Error refreshing mood data:', error);
     }
@@ -121,6 +115,12 @@ export default function HomeScreen() {
     setSelectedMood(mood);
   };
   
+  // Handle mood saved
+  const handleMoodSaved = async () => {
+    // Refresh all mood data when a new mood is saved
+    await refreshMoodData();
+  };
+  
   // Handle profile button press
   const handleProfilePress = () => {
     setProfileModalVisible(true);
@@ -129,6 +129,9 @@ export default function HomeScreen() {
   // Handle profile modal close
   const handleProfileModalClose = () => {
     setProfileModalVisible(false);
+    
+    // Refresh data when profile modal is closed (in case settings were changed)
+    refreshMoodData();
   };
   
   function getMoodEmoji(rating: number | null): string {
@@ -190,7 +193,8 @@ export default function HomeScreen() {
           <Text style={styles.sectionTitle}>How are you feeling today?</Text>
           <MoodSlider 
             value={selectedMood} 
-            onValueChange={handleMoodChange} 
+            onValueChange={handleMoodChange}
+            onMoodSaved={handleMoodSaved} // Add the callback
             disabled={isSliderDisabled}
           />
         </View>
@@ -232,7 +236,7 @@ export default function HomeScreen() {
             
             <View style={styles.trendContainer}>
               <Text style={styles.trendTitle}>Your Mood Trend</Text>
-              <MoodTrendGraph days={5} />
+              <MoodTrendGraph key={trendGraphKey} days={5} />
             </View>
           </View>
         </View>
