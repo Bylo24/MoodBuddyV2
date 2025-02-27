@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { StyleSheet, Text, View, ScrollView, Dimensions, SafeAreaView, StatusBar } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, Text, View, ScrollView, Dimensions, SafeAreaView, StatusBar, AppState } from 'react-native';
 import { theme } from '../theme/theme';
 import MoodSlider from '../components/MoodSlider';
 import ActivityCard from '../components/ActivityCard';
@@ -15,6 +15,9 @@ export default function HomeScreen() {
   // State for selected mood (just for UI demonstration)
   const [selectedMood, setSelectedMood] = useState<MoodRating>(3);
   
+  // State to force quote refresh
+  const [quoteKey, setQuoteKey] = useState(0);
+  
   // Get the most recent mood entry
   const latestMood = recentMoodEntries[0];
   
@@ -23,6 +26,20 @@ export default function HomeScreen() {
   
   // User name (would come from user profile in a real app)
   const userName = "Alex";
+  
+  // Listen for app state changes to refresh quote when app comes to foreground
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      if (nextAppState === 'active') {
+        // App has come to the foreground, refresh quote
+        setQuoteKey(prevKey => prevKey + 1);
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
   
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -38,7 +55,7 @@ export default function HomeScreen() {
           <Text style={styles.date}>{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</Text>
         </View>
         
-        <QuoteComponent />
+        <QuoteComponent key={quoteKey} />
         
         <View style={styles.moodCheckInContainer}>
           <Text style={styles.sectionTitle}>How are you feeling today?</Text>
