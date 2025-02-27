@@ -1,30 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, Animated, Dimensions } from 'react-native';
+import { StyleSheet, Text, View, Animated, Alert } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { MoodRating } from '../types';
 import { theme } from '../theme/theme';
-
-// Get screen dimensions
-const { width: screenWidth } = Dimensions.get('window');
+import { getTodayMoodEntry, saveTodayMood, canUpdateTodayMood } from '../services/moodService';
 
 interface MoodSliderProps {
-  value: MoodRating;
-  onValueChange: (value: MoodRating) => void;
+  initialValue?: MoodRating;
+  onValueChange?: (value: MoodRating) => void;
+  onSaveComplete?: () => void;
 }
 
-interface MoodOption {
-  rating: MoodRating;
-  label: string;
-  emoji: string;
-  color: string;
-}
-
-export default function MoodSlider({ value, onValueChange }: MoodSliderProps) {
-  // Animation value for emoji scaling
+export default function MoodSlider({ 
+  initialValue = 3, 
+  onValueChange,
+  onSaveComplete
+}: MoodSliderProps) {
+  const [value, setValue] = useState<MoodRating>(initialValue);
+  const [isLocked, setIsLocked] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [scaleAnim] = useState(new Animated.Value(1));
   
   // Define mood options
-  const moodOptions: MoodOption[] = [
+  const moodOptions = [
     { rating: 1, label: "Terrible", emoji: "😢", color: theme.colors.mood1 },
     { rating: 2, label: "Not Good", emoji: "😕", color: theme.colors.mood2 },
     { rating: 3, label: "Okay", emoji: "😐", color: theme.colors.mood3 },
@@ -34,6 +32,35 @@ export default function MoodSlider({ value, onValueChange }: MoodSliderProps) {
   
   // Get current mood option based on value
   const currentMood = moodOptions.find(option => option.rating === value) || moodOptions[2];
+  
+  // Load today's mood data
+  useEffect(() => {
+    const loadTodayMood = async () => {
+      try {
+        setIsLoading(true);
+        
+        // Check if user can update today's mood
+        const canUpdate = await canUpdateTodayMood();
+        setIsLocked(!canUpdate);
+        
+        // Get today's mood entry
+        const todayEntry = await getTodayMoodEntry();
+        
+        if (todayEntry) {
+          setValue(todayEntry.rating);
+          if (onValueChange) {
+            onValueChange(todayEntry.rating);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading today\'s mood:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadTodayMood();
+  }, []);
   
   // Animate emoji when mood changes
   useEffect(() => {
@@ -52,24 +79,59 @@ export default function MoodSlider({ value, onValueChange }: MoodSliderProps) {
   }, [value]);
   
   // Handle slider value change
-  const handleValueChange = (sliderValue: number) => {
+  const handleValueChange = async (sliderValue: number) => {
     // Convert to integer between 1-5
     const moodRating = Math.round(sliderValue) as MoodRating;
-    onValueChange(moodRating);
+    
+    if (isLocked) {
+      Alert.alert(
+        "Mood Locked",
+        "Today's mood entry is locked and cannot be changed.",
+        [{ text: "OK" }]
+      );
+      return;
+    }
+    
+    setValue(moodRating);
+    
+    if (onValueChange) {
+      onValueChange(moodRating);
+    }
+    
+    try {
+      // Save to database
+      await saveTodayMood(moodRating);
+      
+      if (onSaveComplete) {
+        onSaveComplete();
+      }
+    } catch (error) {
+      console.error('Error saving mood:', error);
+      Alert.alert(
+        "Error",
+        "Failed to save your mood. Please try again.",
+        [{ text: "OK" }]
+      );
+    }
   };
   
   return (
-    <View style={styles.container}>
+    <View style={[
+      styles.container,
+      isLocked && styles.lockedContainer
+    ]}>
       <Slider
         style={styles.slider}
         minimumValue={1}
         maximumValue={5}
         step={1}
         value={value}
-        onValueChange={handleValueChange}
+        onValueChange={(val) => setValue(Math.round(val) as MoodRating)}
+        onSlidingComplete={handleValueChange}
         minimumTrackTintColor={currentMood.color}
         maximumTrackTintColor={theme.colors.border}
         thumbTintColor={currentMood.color}
+        disabled={isLocked || isLoading}
       />
       
       <View style={styles.labelContainer}>
@@ -98,6 +160,12 @@ export default function MoodSlider({ value, onValueChange }: MoodSliderProps) {
         <Text style={[styles.moodLabel, { color: currentMood.color }]}>
           {currentMood.label}
         </Text>
+        
+        {isLocked && (
+          <Text style={styles.lockedText}>
+            Today's mood is locked
+          </Text>
+        )}
       </View>
     </View>
   );
@@ -111,6 +179,11 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     ...theme.shadows.small,
+  },
+  lockedContainer: {
+    opacity: 0.8,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   slider: {
     width: '100%',
@@ -138,5 +211,11 @@ const styles = StyleSheet.create({
   moodLabel: {
     fontSize: 20,
     fontWeight: theme.fontWeights.bold,
+  },
+  lockedText: {
+    fontSize: 12,
+    color: theme.colors.subtext,
+    marginTop: 8,
+    fontStyle: 'italic',
   },
 });

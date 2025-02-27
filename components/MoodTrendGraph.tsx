@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, View, Text, Dimensions } from 'react-native';
-import { MoodEntry } from '../types';
 import { theme } from '../theme/theme';
+import { MoodEntry } from '../services/moodService';
 
 // Get screen dimensions
 const { width: screenWidth } = Dimensions.get('window');
@@ -16,7 +16,10 @@ export default function MoodTrendGraph({
   days = 5 
 }: MoodTrendGraphProps) {
   // Take only the most recent entries up to the specified number of days
-  const recentEntries = moodEntries.slice(0, days).reverse();
+  const recentEntries = [...moodEntries]
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice(0, days)
+    .reverse();
   
   // Calculate if mood is improving
   const isImproving = recentEntries.length >= 2 && 
@@ -40,11 +43,21 @@ export default function MoodTrendGraph({
     return date.toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 1);
   };
 
+  // If no entries, show empty state
+  if (recentEntries.length === 0) {
+    return (
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyText}>No mood data yet</Text>
+        <Text style={styles.emptySubtext}>Your mood trend will appear here</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.graphContainer}>
         {recentEntries.map((entry, index) => (
-          <View key={entry.id} style={styles.dayColumn}>
+          <View key={entry.id || index} style={styles.dayColumn}>
             <View style={styles.barContainer}>
               <View 
                 style={[
@@ -59,9 +72,17 @@ export default function MoodTrendGraph({
             <Text style={styles.dayLabel}>{getDayAbbreviation(entry.date)}</Text>
           </View>
         ))}
+        
+        {/* Fill in empty slots if we have fewer than 'days' entries */}
+        {Array.from({ length: Math.max(0, days - recentEntries.length) }).map((_, index) => (
+          <View key={`empty-${index}`} style={styles.dayColumn}>
+            <View style={styles.barContainer} />
+            <Text style={styles.dayLabel}>-</Text>
+          </View>
+        ))}
       </View>
       
-      {isImproving && (
+      {isImproving && recentEntries.length >= 2 && (
         <Text style={styles.motivationalText}>
           You're improving! Keep going! 🎉
         </Text>
@@ -109,5 +130,20 @@ const styles = StyleSheet.create({
     fontWeight: theme.fontWeights.semibold,
     color: theme.colors.success,
     textAlign: 'center',
+  },
+  emptyContainer: {
+    height: 80,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 14,
+    color: theme.colors.subtext,
+    fontWeight: theme.fontWeights.medium,
+  },
+  emptySubtext: {
+    fontSize: 12,
+    color: theme.colors.subtext,
+    opacity: 0.7,
   },
 });
