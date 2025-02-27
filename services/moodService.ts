@@ -3,7 +3,9 @@ import { MoodEntry, MoodRating } from '../types';
 
 // Format date as YYYY-MM-DD
 export const formatDate = (date: Date): string => {
-  return date.toISOString().split('T')[0];
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0); // Normalize time
+  return d.toISOString().split('T')[0];
 };
 
 // Get today's date in YYYY-MM-DD format
@@ -117,6 +119,30 @@ export const saveTodayMood = async (rating: MoodRating, note?: string): Promise<
   }
 };
 
+// Get all mood entries sorted by date
+export const getAllMoodEntries = async (): Promise<MoodEntry[]> => {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+    
+    const { data, error } = await supabase
+      .from('mood_entries')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('date', { ascending: false });
+    
+    if (error) {
+      console.error('Error fetching all mood entries:', error);
+      return [];
+    }
+    
+    return data as MoodEntry[];
+  } catch (error) {
+    console.error('Unexpected error in getAllMoodEntries:', error);
+    return [];
+  }
+};
+
 // Get recent mood entries for the current week (Sunday to Saturday)
 export const getCurrentWeekMoodEntries = async (): Promise<MoodEntry[]> => {
   try {
@@ -220,53 +246,46 @@ export const getAverageMood = async (days: number = 7): Promise<number | null> =
   }
 };
 
-// Get all mood entries sorted by date
-export const getAllMoodEntries = async (): Promise<MoodEntry[]> => {
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return [];
-    
-    const { data, error } = await supabase
-      .from('mood_entries')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('date', { ascending: false });
-    
-    if (error) {
-      console.error('Error fetching all mood entries:', error);
-      return [];
-    }
-    
-    return data as MoodEntry[];
-  } catch (error) {
-    console.error('Unexpected error in getAllMoodEntries:', error);
-    return [];
-  }
-};
-
 // Get mood streak (consecutive days with mood entries)
 export const getMoodStreak = async (): Promise<number> => {
   try {
-    const allEntries = await getAllMoodEntries();
-    if (allEntries.length === 0) return 0;
+    console.log('Calculating mood streak...');
+    
+    // Get all mood entries
+    const entries = await getAllMoodEntries();
+    if (entries.length === 0) {
+      console.log('No mood entries found, streak is 0');
+      return 0;
+    }
     
     // Sort entries by date (newest first)
-    const sortedEntries = [...allEntries].sort((a, b) => 
-      new Date(b.date).getTime() - new Date(a.date).getTime()
-    );
+    const sortedEntries = [...entries].sort((a, b) => {
+      return new Date(b.date).getTime() - new Date(a.date).getTime();
+    });
     
-    // Check if the most recent entry is from today or yesterday
-    const mostRecentDate = new Date(sortedEntries[0].date);
+    console.log(`Found ${sortedEntries.length} mood entries, sorted by date`);
+    
+    // Get today's date
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const todayStr = formatDate(today);
     
+    // Get yesterday's date
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
-    yesterday.setHours(0, 0, 0, 0);
+    const yesterdayStr = formatDate(yesterday);
+    
+    console.log(`Today: ${todayStr}, Yesterday: ${yesterdayStr}`);
+    
+    // Check if the most recent entry is from today or yesterday
+    const mostRecentEntry = sortedEntries[0];
+    const mostRecentDate = mostRecentEntry.date;
+    
+    console.log(`Most recent entry date: ${mostRecentDate}`);
     
     // If most recent entry is older than yesterday, streak is broken
-    if (mostRecentDate.getTime() < yesterday.getTime()) {
-      console.log('Streak broken: Most recent entry is older than yesterday');
+    if (mostRecentDate !== todayStr && mostRecentDate !== yesterdayStr) {
+      console.log('Most recent entry is older than yesterday, streak is 0');
       return 0;
     }
     
@@ -274,28 +293,34 @@ export const getMoodStreak = async (): Promise<number> => {
     let streak = 1;
     let currentDate = new Date(mostRecentDate);
     
-    // Loop through dates backwards, checking for consecutive days
-    for (let i = 1; i < sortedEntries.length; i++) {
-      const prevDate = new Date(currentDate);
-      prevDate.setDate(prevDate.getDate() - 1);
-      prevDate.setHours(0, 0, 0, 0);
+    console.log(`Starting streak calculation with date: ${currentDate.toISOString()}`);
+    
+    // Create a map of dates with entries for faster lookup
+    const dateMap = new Map();
+    for (const entry of entries) {
+      dateMap.set(entry.date, true);
+    }
+    
+    // Loop through previous days to find consecutive entries
+    for (let i = 1; i <= 365; i++) { // Check up to a year back
+      // Move to previous day
+      currentDate.setDate(currentDate.getDate() - 1);
+      const dateStr = formatDate(currentDate);
       
-      const entryDate = new Date(sortedEntries[i].date);
-      entryDate.setHours(0, 0, 0, 0);
-      
-      // Check if this entry is from the previous day
-      if (entryDate.getTime() === prevDate.getTime()) {
+      // Check if there's an entry for this date
+      if (dateMap.has(dateStr)) {
         streak++;
-        currentDate = entryDate;
+        console.log(`Found entry for ${dateStr}, streak is now ${streak}`);
       } else {
-        // Streak is broken
+        console.log(`No entry found for ${dateStr}, breaking streak`);
         break;
       }
     }
     
+    console.log(`Final streak calculation: ${streak} days`);
     return streak;
   } catch (error) {
-    console.error('Unexpected error in getMoodStreak:', error);
+    console.error('Error calculating mood streak:', error);
     return 0;
   }
 };

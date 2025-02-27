@@ -123,25 +123,6 @@ export default function HomeScreen() {
     }
   };
   
-  // Calculate streak based on current data and today's mood
-  const calculateStreak = async () => {
-    // Get the current streak from the database
-    const currentStreak = await getMoodStreak();
-    console.log('Current streak from database:', currentStreak);
-    
-    // If today's mood is set, we have at least a streak of 1
-    if (todayMood !== null) {
-      // If the database streak is 0 but we have today's mood, set streak to 1
-      if (currentStreak === 0) {
-        setStreak(1);
-      } else {
-        setStreak(currentStreak);
-      }
-    } else {
-      setStreak(currentStreak);
-    }
-  };
-  
   // Refresh mood data
   const refreshMoodData = async () => {
     try {
@@ -159,7 +140,9 @@ export default function HomeScreen() {
       }
       
       // Load streak
-      await calculateStreak();
+      const currentStreak = await getMoodStreak();
+      console.log('Current streak:', currentStreak);
+      setStreak(currentStreak);
       
       // Load weekly entries
       const weeklyEntries = await getCurrentWeekMoodEntries();
@@ -187,12 +170,6 @@ export default function HomeScreen() {
     
     // Immediately update today's mood in the UI
     setTodayMood(mood);
-    
-    // If this is the first mood of the day, update streak
-    if (todayMood === null) {
-      // Recalculate streak
-      calculateStreak();
-    }
   };
   
   // Handle mood saved
