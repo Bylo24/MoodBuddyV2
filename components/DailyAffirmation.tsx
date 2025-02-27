@@ -6,15 +6,17 @@ interface DailyAffirmationProps {
   quote: string;
   author?: string;
   isLoading?: boolean;
+  hasError?: boolean;
 }
 
 export default function DailyAffirmation({ 
   quote, 
   author, 
-  isLoading = false 
+  isLoading = false,
+  hasError = false
 }: DailyAffirmationProps) {
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, hasError && styles.errorContainer]}>
       <Text style={styles.quoteIcon}>"</Text>
       
       {isLoading ? (
@@ -24,7 +26,7 @@ export default function DailyAffirmation({
         </View>
       ) : (
         <>
-          <Text style={styles.quote}>{quote}</Text>
+          <Text style={[styles.quote, hasError && styles.errorText]}>{quote}</Text>
           {author && <Text style={styles.author}>— {author}</Text>}
         </>
       )}
@@ -42,6 +44,10 @@ const styles = StyleSheet.create({
     borderLeftColor: theme.colors.primary,
     minHeight: 100, // Ensure consistent height during loading
   },
+  errorContainer: {
+    borderLeftColor: theme.colors.error,
+    backgroundColor: theme.colors.error + '22',
+  },
   quoteIcon: {
     fontSize: 32,
     color: theme.colors.primary,
@@ -56,6 +62,10 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     fontStyle: 'italic',
     lineHeight: 22,
+  },
+  errorText: {
+    color: theme.colors.error,
+    fontStyle: 'normal',
   },
   author: {
     fontSize: 13,
