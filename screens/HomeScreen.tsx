@@ -1,5 +1,15 @@
-import React, { useState } from 'react';
-import { StyleSheet, Text, View, ScrollView, Dimensions, SafeAreaView, StatusBar } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { 
+  StyleSheet, 
+  Text, 
+  View, 
+  ScrollView, 
+  Dimensions, 
+  SafeAreaView, 
+  StatusBar,
+  RefreshControl,
+  TouchableOpacity
+} from 'react-native';
 import { theme } from '../theme/theme';
 import MoodSlider from '../components/MoodSlider';
 import ActivityCard from '../components/ActivityCard';
@@ -7,6 +17,7 @@ import MoodTrendGraph from '../components/MoodTrendGraph';
 import DailyAffirmation from '../components/DailyAffirmation';
 import { recentMoodEntries, recommendedActivities } from '../data/mockData';
 import { MoodRating } from '../types';
+import { fetchInspirationalQuote, Quote } from '../services/geminiService';
 
 // Get screen dimensions
 const { width: screenWidth } = Dimensions.get('window');
@@ -15,20 +26,51 @@ export default function HomeScreen() {
   // State for selected mood (just for UI demonstration)
   const [selectedMood, setSelectedMood] = useState<MoodRating>(3);
   
+  // State for quote
+  const [dailyQuote, setDailyQuote] = useState<Quote>({
+    quote: "Your mental health is a priority. Your happiness is essential. Your self-care is a necessity.",
+    author: "Unknown"
+  });
+  
+  // Loading state for quote
+  const [isLoadingQuote, setIsLoadingQuote] = useState(false);
+  
+  // Refreshing state for pull-to-refresh
+  const [refreshing, setRefreshing] = useState(false);
+  
   // Get the most recent mood entry
   const latestMood = recentMoodEntries[0];
   
   // Calculate average mood for the last 5 entries
   const averageMood = recentMoodEntries.reduce((sum, entry) => sum + entry.rating, 0) / recentMoodEntries.length;
   
-  // Daily affirmation
-  const dailyAffirmation = {
-    quote: "Your mental health is a priority. Your happiness is essential. Your self-care is a necessity.",
-    author: "Unknown"
-  };
-  
   // User name (would come from user profile in a real app)
   const userName = "Alex";
+  
+  // Function to fetch a new quote
+  const getNewQuote = useCallback(async () => {
+    setIsLoadingQuote(true);
+    try {
+      const newQuote = await fetchInspirationalQuote();
+      setDailyQuote(newQuote);
+    } catch (error) {
+      console.error('Failed to fetch quote:', error);
+    } finally {
+      setIsLoadingQuote(false);
+    }
+  }, []);
+  
+  // Fetch quote on component mount
+  useEffect(() => {
+    getNewQuote();
+  }, [getNewQuote]);
+  
+  // Handle pull-to-refresh
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await getNewQuote();
+    setRefreshing(false);
+  }, [getNewQuote]);
   
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -37,6 +79,15 @@ export default function HomeScreen() {
         style={styles.container} 
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={onRefresh}
+            tintColor={theme.colors.primary}
+            colors={[theme.colors.primary]}
+            progressBackgroundColor={theme.colors.card}
+          />
+        }
       >
         <View style={styles.header}>
           <Text style={styles.greeting}>Hey {userName},</Text>
@@ -44,7 +95,20 @@ export default function HomeScreen() {
           <Text style={styles.date}>{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</Text>
         </View>
         
-        <DailyAffirmation quote={dailyAffirmation.quote} author={dailyAffirmation.author} />
+        <View style={styles.quoteContainer}>
+          <DailyAffirmation 
+            quote={dailyQuote.quote} 
+            author={dailyQuote.author} 
+            isLoading={isLoadingQuote}
+          />
+          <TouchableOpacity 
+            style={styles.refreshButton} 
+            onPress={getNewQuote}
+            disabled={isLoadingQuote}
+          >
+            <Text style={styles.refreshButtonText}>New Quote</Text>
+          </TouchableOpacity>
+        </View>
         
         <View style={styles.moodCheckInContainer}>
           <Text style={styles.sectionTitle}>How are you feeling today?</Text>
@@ -164,6 +228,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: theme.colors.subtext,
     marginTop: 4,
+  },
+  quoteContainer: {
+    position: 'relative',
+  },
+  refreshButton: {
+    position: 'absolute',
+    right: 0,
+    bottom: 28,
+    backgroundColor: theme.colors.primary + '33',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+  },
+  refreshButtonText: {
+    color: theme.colors.primary,
+    fontSize: 12,
+    fontWeight: theme.fontWeights.medium,
   },
   moodCheckInContainer: {
     marginBottom: 24,
