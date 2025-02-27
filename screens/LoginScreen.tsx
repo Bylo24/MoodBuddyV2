@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   StyleSheet, 
   Text, 
@@ -10,7 +10,7 @@ import {
   Platform,
   ScrollView,
   Alert,
-  Image
+  Keyboard
 } from 'react-native';
 import { theme } from '../theme/theme';
 import { signInWithEmail, signUpWithEmail, resetPassword } from '../services/authService';
@@ -27,10 +27,45 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
   const [isSignUp, setIsSignUp] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [resetMode, setResetMode] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  
+  // Clear error message when form changes
+  useEffect(() => {
+    setErrorMessage(null);
+  }, [email, password, isSignUp, resetMode]);
+  
+  const validateEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+  
+  const validatePassword = (password: string): boolean => {
+    // At least 8 characters, 1 uppercase, 1 lowercase, 1 number
+    return password.length >= 8;
+  };
   
   const handleAuth = async () => {
-    if (!email || !password) {
-      Alert.alert('Error', 'Please enter both email and password');
+    Keyboard.dismiss();
+    setErrorMessage(null);
+    
+    // Validate inputs
+    if (!email) {
+      setErrorMessage('Please enter your email address');
+      return;
+    }
+    
+    if (!validateEmail(email)) {
+      setErrorMessage('Please enter a valid email address');
+      return;
+    }
+    
+    if (!password) {
+      setErrorMessage('Please enter your password');
+      return;
+    }
+    
+    if (isSignUp && !validatePassword(password)) {
+      setErrorMessage('Password must be at least 8 characters long');
       return;
     }
     
@@ -49,15 +84,24 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
         onLogin();
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Authentication failed');
+      console.error('Auth error:', error);
+      setErrorMessage(error.message || 'Authentication failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
   
   const handleResetPassword = async () => {
+    Keyboard.dismiss();
+    setErrorMessage(null);
+    
     if (!email) {
-      Alert.alert('Error', 'Please enter your email address');
+      setErrorMessage('Please enter your email address');
+      return;
+    }
+    
+    if (!validateEmail(email)) {
+      setErrorMessage('Please enter a valid email address');
       return;
     }
     
@@ -71,10 +115,23 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
         [{ text: 'OK', onPress: () => setResetMode(false) }]
       );
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to send reset email');
+      console.error('Reset password error:', error);
+      setErrorMessage(error.message || 'Failed to send reset email. Please try again.');
     } finally {
       setIsLoading(false);
     }
+  };
+  
+  const switchMode = () => {
+    setIsSignUp(!isSignUp);
+    setErrorMessage(null);
+    setPassword('');
+  };
+  
+  const toggleResetMode = () => {
+    setResetMode(!resetMode);
+    setErrorMessage(null);
+    setPassword('');
   };
   
   return (
@@ -101,6 +158,12 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
                 : 'Welcome Back'}
           </Text>
           
+          {errorMessage && (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>{errorMessage}</Text>
+            </View>
+          )}
+          
           <View style={styles.inputContainer}>
             <Ionicons name="mail-outline" size={20} color={theme.colors.subtext} style={styles.inputIcon} />
             <TextInput
@@ -111,6 +174,8 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
               onChangeText={setEmail}
               autoCapitalize="none"
               keyboardType="email-address"
+              autoComplete="email"
+              textContentType="emailAddress"
             />
           </View>
           
@@ -124,6 +189,8 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
+                autoComplete={isSignUp ? "new-password" : "password"}
+                textContentType={isSignUp ? "newPassword" : "password"}
               />
               <TouchableOpacity 
                 style={styles.passwordToggle}
@@ -136,6 +203,12 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
                 />
               </TouchableOpacity>
             </View>
+          )}
+          
+          {isSignUp && (
+            <Text style={styles.passwordHint}>
+              Password must be at least 8 characters long
+            </Text>
           )}
           
           {resetMode ? (
@@ -167,7 +240,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
           {!resetMode && (
             <TouchableOpacity 
               style={styles.switchButton}
-              onPress={() => setIsSignUp(!isSignUp)}
+              onPress={switchMode}
               disabled={isLoading}
             >
               <Text style={styles.switchButtonText}>
@@ -179,7 +252,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
           {!isSignUp && !resetMode && (
             <TouchableOpacity 
               style={styles.forgotButton}
-              onPress={() => setResetMode(true)}
+              onPress={toggleResetMode}
               disabled={isLoading}
             >
               <Text style={styles.forgotButtonText}>Forgot Password?</Text>
@@ -189,7 +262,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
           {resetMode && (
             <TouchableOpacity 
               style={styles.backButton}
-              onPress={() => setResetMode(false)}
+              onPress={toggleResetMode}
               disabled={isLoading}
             >
               <Text style={styles.backButtonText}>Back to Login</Text>
@@ -215,11 +288,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 40,
   },
-  logo: {
-    width: 100,
-    height: 100,
-    marginBottom: 16,
-  },
   logoText: {
     fontSize: 32,
     fontWeight: theme.fontWeights.bold,
@@ -243,6 +311,18 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     textAlign: 'center',
   },
+  errorContainer: {
+    backgroundColor: theme.colors.error + '20',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: theme.colors.error,
+  },
+  errorText: {
+    color: theme.colors.error,
+    fontSize: 14,
+  },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -264,6 +344,13 @@ const styles = StyleSheet.create({
   },
   passwordToggle: {
     padding: 8,
+  },
+  passwordHint: {
+    fontSize: 12,
+    color: theme.colors.subtext,
+    marginTop: -8,
+    marginBottom: 16,
+    marginLeft: 4,
   },
   button: {
     backgroundColor: theme.colors.primary,

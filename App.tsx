@@ -18,7 +18,14 @@ export default function App() {
     // Set up auth state change listener
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('Auth state changed:', event);
-      setIsLoggedIn(!!session);
+      console.log('Session:', session ? 'Present' : 'None');
+      
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        setIsLoggedIn(true);
+      } else if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
+        setIsLoggedIn(false);
+      }
+      
       setIsLoading(false);
     });
     
@@ -31,7 +38,9 @@ export default function App() {
   const checkAuth = async () => {
     setIsLoading(true);
     try {
+      console.log('Checking authentication status...');
       const authenticated = await isAuthenticated();
+      console.log('Authentication check result:', authenticated);
       setIsLoggedIn(authenticated);
     } catch (error) {
       console.error('Error checking auth:', error);
@@ -43,13 +52,16 @@ export default function App() {
   
   // Handle login
   const handleLogin = () => {
+    console.log('Login successful, updating UI');
     setIsLoggedIn(true);
   };
   
   // Handle logout
   const handleLogout = async () => {
     try {
+      console.log('Logging out...');
       await signOut();
+      console.log('Logout successful, updating UI');
       setIsLoggedIn(false);
     } catch (error) {
       console.error('Error signing out:', error);
