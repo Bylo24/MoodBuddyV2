@@ -13,7 +13,7 @@ import {
   Keyboard
 } from 'react-native';
 import { theme } from '../theme/theme';
-import { signInWithEmail, signUpWithEmail, resetPassword } from '../services/authService';
+import { signInWithEmail, signUpWithEmail, resetPassword, resendConfirmationEmail } from '../services/authService';
 import { Ionicons } from '@expo/vector-icons';
 
 interface LoginScreenProps {
@@ -27,12 +27,13 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
   const [isSignUp, setIsSignUp] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [resetMode, setResetMode] = useState(false);
+  const [confirmMode, setConfirmMode] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   
   // Clear error message when form changes
   useEffect(() => {
     setErrorMessage(null);
-  }, [email, password, isSignUp, resetMode]);
+  }, [email, password, isSignUp, resetMode, confirmMode]);
   
   const validateEmail = (email: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -83,10 +84,11 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
           onLogin();
         } else if (result.user) {
           // If user was created but email confirmation is required
+          setConfirmMode(true);
           Alert.alert(
-            'Account Created',
+            'Email Confirmation Required',
             'Your account has been created. Please check your email for confirmation instructions.',
-            [{ text: 'OK', onPress: () => setIsSignUp(false) }]
+            [{ text: 'OK' }]
           );
         } else {
           setErrorMessage('Failed to create account. Please try again.');
@@ -106,6 +108,12 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
         setIsSignUp(false);
       } else if (error.message?.includes('Invalid login credentials')) {
         setErrorMessage('Invalid email or password. Please try again.');
+      } else if (error.message?.includes('Email confirmation required') || error.name === 'EmailConfirmationRequired') {
+        setConfirmMode(true);
+        setErrorMessage('Please confirm your email address before logging in.');
+      } else if (error.message?.includes('Email not confirmed')) {
+        setConfirmMode(true);
+        setErrorMessage('Please confirm your email address before logging in.');
       } else if (error.message?.includes('network') || error.message?.includes('timeout') || error.message?.includes('abort')) {
         setErrorMessage('Network error. Please check your connection and try again.');
       } else {
@@ -152,16 +160,59 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
     }
   };
   
+  const handleResendConfirmation = async () => {
+    Keyboard.dismiss();
+    setErrorMessage(null);
+    
+    if (!email) {
+      setErrorMessage('Please enter your email address');
+      return;
+    }
+    
+    if (!validateEmail(email)) {
+      setErrorMessage('Please enter a valid email address');
+      return;
+    }
+    
+    setIsLoading(true);
+    
+    try {
+      await resendConfirmationEmail(email);
+      Alert.alert(
+        'Confirmation Email Sent',
+        'Please check your email for confirmation instructions.',
+        [{ text: 'OK' }]
+      );
+    } catch (error: any) {
+      console.error('Resend confirmation error:', error);
+      
+      if (error.message?.includes('network') || error.message?.includes('timeout') || error.message?.includes('abort')) {
+        setErrorMessage('Network error. Please check your connection and try again.');
+      } else {
+        setErrorMessage(error.message || 'Failed to resend confirmation email. Please try again.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
   const switchMode = () => {
     setIsSignUp(!isSignUp);
     setErrorMessage(null);
     setPassword('');
+    setConfirmMode(false);
   };
   
   const toggleResetMode = () => {
     setResetMode(!resetMode);
     setErrorMessage(null);
     setPassword('');
+    setConfirmMode(false);
+  };
+  
+  const toggleConfirmMode = () => {
+    setConfirmMode(!confirmMode);
+    setErrorMessage(null);
   };
   
   return (
@@ -183,9 +234,11 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
           <Text style={styles.title}>
             {resetMode 
               ? 'Reset Password' 
-              : isSignUp 
-                ? 'Create Account' 
-                : 'Welcome Back'}
+              : confirmMode
+                ? 'Email Confirmation'
+                : isSignUp 
+                  ? 'Create Account' 
+                  : 'Welcome Back'}
           </Text>
           
           {errorMessage && (
@@ -209,7 +262,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
             />
           </View>
           
-          {!resetMode && (
+          {!resetMode && !confirmMode && (
             <View style={styles.inputContainer}>
               <Ionicons name="lock-closed-outline" size={20} color={theme.colors.subtext} style={styles.inputIcon} />
               <TextInput
@@ -235,13 +288,42 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
             </View>
           )}
           
-          {isSignUp && (
+          {isSignUp && !confirmMode && (
             <Text style={styles.passwordHint}>
               Password must be at least 6 characters long
             </Text>
           )}
           
-          {resetMode ? (
+          {confirmMode ? (
+            <>
+              <Text style={styles.confirmText}>
+                We've sent a confirmation email to your address. Please check your inbox and click the confirmation link.
+              </Text>
+              <TouchableOpacity 
+                style={styles.button}
+                onPress={handleResendConfirmation}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color="white" />
+                ) : (
+                  <Text style={styles.buttonText}>Resend Confirmation Email</Text>
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.switchButton}
+                onPress={() => {
+                  setConfirmMode(false);
+                  setIsSignUp(false);
+                }}
+                disabled={isLoading}
+              >
+                <Text style={styles.switchButtonText}>
+                  Already confirmed? Log In
+                </Text>
+              </TouchableOpacity>
+            </>
+          ) : resetMode ? (
             <TouchableOpacity 
               style={styles.button}
               onPress={handleResetPassword}
@@ -267,7 +349,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
             </TouchableOpacity>
           )}
           
-          {!resetMode && (
+          {!resetMode && !confirmMode && (
             <TouchableOpacity 
               style={styles.switchButton}
               onPress={switchMode}
@@ -279,7 +361,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
             </TouchableOpacity>
           )}
           
-          {!isSignUp && !resetMode && (
+          {!isSignUp && !resetMode && !confirmMode && (
             <TouchableOpacity 
               style={styles.forgotButton}
               onPress={toggleResetMode}
@@ -289,10 +371,10 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
             </TouchableOpacity>
           )}
           
-          {resetMode && (
+          {(resetMode || confirmMode) && (
             <TouchableOpacity 
               style={styles.backButton}
-              onPress={toggleResetMode}
+              onPress={resetMode ? toggleResetMode : toggleConfirmMode}
               disabled={isLoading}
             >
               <Text style={styles.backButtonText}>Back to Login</Text>
@@ -352,6 +434,13 @@ const styles = StyleSheet.create({
   errorText: {
     color: theme.colors.error,
     fontSize: 14,
+  },
+  confirmText: {
+    fontSize: 16,
+    color: theme.colors.text,
+    marginBottom: 24,
+    textAlign: 'center',
+    lineHeight: 24,
   },
   inputContainer: {
     flexDirection: 'row',

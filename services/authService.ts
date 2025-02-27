@@ -77,6 +77,10 @@ export const signUpWithEmail = async (email: string, password: string) => {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        // Set this to false to allow immediate sign-in without email confirmation
+        emailRedirectTo: undefined
+      }
     });
     
     if (error) {
@@ -86,10 +90,19 @@ export const signUpWithEmail = async (email: string, password: string) => {
     
     console.log('Sign up response:', data);
     
-    // If we have a user but no session, try to sign in immediately
+    // Check if email confirmation is required
     if (data.user && !data.session) {
-      console.log('User created but no session, attempting immediate sign in');
-      return await signInWithEmail(email, password);
+      if (data.user.identities && data.user.identities.length === 0) {
+        throw new Error('User already registered');
+      }
+      
+      if (data.user.email_confirmed_at === null) {
+        console.log('Email confirmation required');
+        // Create a custom error for email confirmation required
+        const confirmationError = new Error('Email confirmation required');
+        confirmationError.name = 'EmailConfirmationRequired';
+        throw confirmationError;
+      }
     }
     
     return data;
@@ -125,5 +138,24 @@ export const resetPassword = async (email: string) => {
     }
     
     console.log('Password reset email sent');
+  });
+};
+
+// Resend confirmation email
+export const resendConfirmationEmail = async (email: string) => {
+  console.log('Attempting to resend confirmation email for:', email);
+  
+  return retryOperation(async () => {
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: email,
+    });
+    
+    if (error) {
+      console.error('Resend confirmation email error:', error.message);
+      throw error;
+    }
+    
+    console.log('Confirmation email resent');
   });
 };

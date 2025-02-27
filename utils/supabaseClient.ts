@@ -16,6 +16,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,
+    flowType: 'pkce', // Use PKCE flow for better security
   },
   global: {
     // Set a longer timeout of 30 seconds to prevent fetch aborts
