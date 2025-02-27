@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { StyleSheet, Text, View, ScrollView, Dimensions, SafeAreaView, StatusBar, AppState, ActivityIndicator } from 'react-native';
 import { theme } from '../theme/theme';
 import MoodSlider from '../components/MoodSlider';
@@ -40,6 +40,47 @@ export default function HomeScreen({ onLogout }: HomeScreenProps) {
   // State to force quote refresh
   const [quoteKey, setQuoteKey] = useState(Date.now());
   
+  // Memoized refresh mood data function
+  const refreshMoodData = useCallback(async () => {
+    try {
+      console.log('Refreshing mood data...');
+      
+      // Load today's mood
+      const todayEntry = await getTodayMoodEntry();
+      if (todayEntry) {
+        console.log('Today\'s mood entry found:', todayEntry);
+        setTodayMood(todayEntry.rating);
+        setSelectedMood(todayEntry.rating);
+      } else {
+        console.log('No mood entry for today');
+        setTodayMood(null);
+        setSelectedMood(null);
+      }
+      
+      // Load streak
+      const currentStreak = await getMoodStreak();
+      console.log('Current streak:', currentStreak);
+      setStreak(currentStreak);
+      
+      // Load weekly entries
+      const weeklyEntries = await getCurrentWeekMoodEntries();
+      console.log('Weekly entries:', weeklyEntries);
+      setWeeklyMoodEntries(weeklyEntries);
+      
+      // Load weekly average
+      const weeklyAvg = await getWeeklyAverageMood();
+      console.log('Weekly average:', weeklyAvg);
+      setWeeklyAverage(weeklyAvg);
+      
+      // Force mood trend graph to refresh
+      setTrendGraphKey(prev => prev + 1);
+      
+      console.log('Mood data refresh complete');
+    } catch (error) {
+      console.error('Error refreshing mood data:', error);
+    }
+  }, []);
+  
   // Load user data and mood information
   useEffect(() => {
     const loadUserData = async () => {
@@ -74,7 +115,7 @@ export default function HomeScreen({ onLogout }: HomeScreenProps) {
     };
     
     loadUserData();
-  }, []);
+  }, [refreshMoodData]);
   
   // Check for date changes when app comes to foreground
   useEffect(() => {
@@ -102,7 +143,7 @@ export default function HomeScreen({ onLogout }: HomeScreenProps) {
     return () => {
       subscription.remove();
     };
-  }, [lastCheckedDate]);
+  }, [lastCheckedDate, refreshMoodData]);
   
   // Calculate weekly average when mood changes
   useEffect(() => {
@@ -141,47 +182,6 @@ export default function HomeScreen({ onLogout }: HomeScreenProps) {
       setWeeklyAverage(avg);
     } else {
       setWeeklyAverage(null);
-    }
-  };
-  
-  // Refresh mood data
-  const refreshMoodData = async () => {
-    try {
-      console.log('Refreshing mood data...');
-      
-      // Load today's mood
-      const todayEntry = await getTodayMoodEntry();
-      if (todayEntry) {
-        console.log('Today\'s mood entry found:', todayEntry);
-        setTodayMood(todayEntry.rating);
-        setSelectedMood(todayEntry.rating);
-      } else {
-        console.log('No mood entry for today');
-        setTodayMood(null);
-        setSelectedMood(null);
-      }
-      
-      // Load streak
-      const currentStreak = await getMoodStreak();
-      console.log('Current streak:', currentStreak);
-      setStreak(currentStreak);
-      
-      // Load weekly entries
-      const weeklyEntries = await getCurrentWeekMoodEntries();
-      console.log('Weekly entries:', weeklyEntries);
-      setWeeklyMoodEntries(weeklyEntries);
-      
-      // Load weekly average
-      const weeklyAvg = await getWeeklyAverageMood();
-      console.log('Weekly average:', weeklyAvg);
-      setWeeklyAverage(weeklyAvg);
-      
-      // Force mood trend graph to refresh
-      setTrendGraphKey(prev => prev + 1);
-      
-      console.log('Mood data refresh complete');
-    } catch (error) {
-      console.error('Error refreshing mood data:', error);
     }
   };
   

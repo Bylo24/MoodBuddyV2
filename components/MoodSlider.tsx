@@ -31,6 +31,7 @@ export default function MoodSlider({
   const [isEditable, setIsEditable] = useState(true);
   const [hasUserMoved, setHasUserMoved] = useState(false);
   const initialLoadRef = useRef(true);
+  const dataFetchedRef = useRef(false);
   
   // Define mood options
   const moodOptions: MoodOption[] = [
@@ -75,7 +76,10 @@ export default function MoodSlider({
   // Load today's mood entry when component mounts
   useEffect(() => {
     const loadTodayMood = async () => {
+      if (dataFetchedRef.current) return; // Prevent duplicate fetches
+      
       try {
+        setIsLoading(true);
         console.log('Loading today\'s mood entry...');
         const entry = await getTodayMoodEntry();
         
@@ -92,14 +96,29 @@ export default function MoodSlider({
           onValueChange(null);
           setIsSaved(false);
         }
+        
+        dataFetchedRef.current = true;
       } catch (error) {
         console.error('Error loading today\'s mood:', error);
       } finally {
+        setIsLoading(false);
         initialLoadRef.current = false;
       }
     };
     
     loadTodayMood();
+    
+    // Add event listener for app focus
+    const handleAppFocus = () => {
+      console.log('App focused, reloading mood data');
+      dataFetchedRef.current = false; // Reset the flag
+      loadTodayMood();
+    };
+    
+    // Clean up function
+    return () => {
+      // Clean up any event listeners if needed
+    };
   }, []);
   
   // Handle slider value change (while sliding)

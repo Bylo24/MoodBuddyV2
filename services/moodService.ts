@@ -69,9 +69,31 @@ export const getMoodEntryForDate = async (date: string): Promise<MoodEntry | nul
 
 // Get mood entry for today
 export const getTodayMoodEntry = async (): Promise<MoodEntry | null> => {
-  const today = getTodayDate();
-  console.log(`Getting mood entry for today: ${today}`);
-  return getMoodEntryForDate(today);
+  try {
+    const today = getTodayDate();
+    console.log(`Getting mood entry for today: ${today}`);
+    
+    // Check if user is authenticated
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      console.error('No authenticated user found in getTodayMoodEntry');
+      return null;
+    }
+    
+    // Fetch today's mood entry
+    const entry = await getMoodEntryForDate(today);
+    
+    if (entry) {
+      console.log('Found today\'s mood entry:', entry);
+    } else {
+      console.log('No mood entry found for today');
+    }
+    
+    return entry;
+  } catch (error) {
+    console.error('Error in getTodayMoodEntry:', error);
+    return null;
+  }
 };
 
 // Save mood entry for today
