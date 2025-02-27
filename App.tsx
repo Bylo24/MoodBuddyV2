@@ -18,6 +18,7 @@ export default function App() {
   const [appState, setAppState] = useState<AppState>('loading');
   const [isLoading, setIsLoading] = useState(true);
   const [userName, setUserName] = useState<string>('');
+  const [isNewUser, setIsNewUser] = useState(false);
   
   // Check authentication status when app loads
   useEffect(() => {
@@ -88,22 +89,47 @@ export default function App() {
         }
         setAppState('home');
       } else {
-        // Check if user has a name set but hasn't completed full onboarding
-        const storedName = await AsyncStorage.getItem('user_display_name');
-        
-        if (storedName) {
-          setUserName(storedName);
-          setAppState('onboarding-intro');
+        // Check if this is a new user or returning user
+        if (isNewUser) {
+          // New user - show onboarding
+          // Check if user has a name set but hasn't completed full onboarding
+          const storedName = await AsyncStorage.getItem('user_display_name');
+          
+          if (storedName) {
+            setUserName(storedName);
+            setAppState('onboarding-intro');
+          } else {
+            // Get user email to extract name if available
+            const user = await getCurrentUser();
+            if (user?.email) {
+              const emailName = user.email.split('@')[0];
+              setUserName(emailName);
+            }
+            
+            console.log('User needs to complete onboarding');
+            setAppState('onboarding-name');
+          }
         } else {
-          // Get user email to extract name if available
-          const user = await getCurrentUser();
-          if (user?.email) {
-            const emailName = user.email.split('@')[0];
-            setUserName(emailName);
+          // Returning user - skip onboarding and mark as completed
+          console.log('Returning user, skipping onboarding');
+          await AsyncStorage.setItem('onboarding_completed', 'true');
+          
+          // Get user name
+          const storedName = await AsyncStorage.getItem('user_display_name');
+          if (storedName) {
+            setUserName(storedName);
+          } else {
+            // Fall back to email-based name
+            const user = await getCurrentUser();
+            if (user?.email) {
+              const emailName = user.email.split('@')[0];
+              setUserName(emailName);
+              // Save this name for future use
+              await AsyncStorage.setItem('user_display_name', emailName);
+            }
           }
           
-          console.log('User needs to complete onboarding');
-          setAppState('onboarding-name');
+          setAppState('home');
         }
       }
     } catch (error) {
@@ -113,8 +139,9 @@ export default function App() {
   };
   
   // Handle login
-  const handleLogin = () => {
-    console.log('Login successful, checking onboarding status');
+  const handleLogin = (isSignUp: boolean) => {
+    console.log('Login successful, isSignUp:', isSignUp);
+    setIsNewUser(isSignUp);
     checkOnboardingStatus();
   };
   
