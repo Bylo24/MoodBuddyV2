@@ -24,10 +24,35 @@ export const getCurrentUser = async () => {
   }
 };
 
+// Helper function to retry a function with exponential backoff
+const retryOperation = async (operation, maxRetries = 3, delay = 1000) => {
+  let lastError;
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await operation();
+    } catch (error) {
+      console.log(`Attempt ${attempt + 1} failed:`, error.message || error);
+      lastError = error;
+      
+      // If it's not a network error or timeout, don't retry
+      if (error.message && !error.message.includes('network') && !error.message.includes('timeout') && !error.message.includes('abort')) {
+        throw error;
+      }
+      
+      // Wait before next retry with exponential backoff
+      await new Promise(resolve => setTimeout(resolve, delay * Math.pow(2, attempt)));
+    }
+  }
+  
+  throw lastError;
+};
+
 // Sign in with email and password
 export const signInWithEmail = async (email: string, password: string) => {
   console.log('Attempting to sign in with email:', email);
-  try {
+  
+  return retryOperation(async () => {
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -40,16 +65,14 @@ export const signInWithEmail = async (email: string, password: string) => {
     
     console.log('Sign in successful:', data.user?.id);
     return data;
-  } catch (error: any) {
-    console.error('Error signing in:', error.message || error);
-    throw error;
-  }
+  });
 };
 
 // Sign up with email and password
 export const signUpWithEmail = async (email: string, password: string) => {
   console.log('Attempting to sign up with email:', email);
-  try {
+  
+  return retryOperation(async () => {
     // Create a new account
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -70,10 +93,7 @@ export const signUpWithEmail = async (email: string, password: string) => {
     }
     
     return data;
-  } catch (error: any) {
-    console.error('Error signing up:', error.message || error);
-    throw error;
-  }
+  });
 };
 
 // Sign out
@@ -95,7 +115,8 @@ export const signOut = async () => {
 // Reset password
 export const resetPassword = async (email: string) => {
   console.log('Attempting to reset password for:', email);
-  try {
+  
+  return retryOperation(async () => {
     const { error } = await supabase.auth.resetPasswordForEmail(email);
     
     if (error) {
@@ -104,8 +125,5 @@ export const resetPassword = async (email: string) => {
     }
     
     console.log('Password reset email sent');
-  } catch (error: any) {
-    console.error('Error resetting password:', error.message || error);
-    throw error;
-  }
+  });
 };

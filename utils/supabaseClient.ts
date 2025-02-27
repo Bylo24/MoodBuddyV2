@@ -18,11 +18,16 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: false,
   },
   global: {
-    // Set a short timeout of 10 seconds
+    // Set a longer timeout of 30 seconds to prevent fetch aborts
     fetch: (url, options) => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      
       return fetch(url, {
         ...options,
-        signal: AbortSignal.timeout(10000), // 10 second timeout
+        signal: controller.signal,
+      }).finally(() => {
+        clearTimeout(timeoutId);
       });
     },
   },

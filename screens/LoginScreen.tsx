@@ -81,22 +81,15 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
         if (result.session) {
           console.log('Sign up successful with session, proceeding to app');
           onLogin();
+        } else if (result.user) {
+          // If user was created but email confirmation is required
+          Alert.alert(
+            'Account Created',
+            'Your account has been created. Please check your email for confirmation instructions.',
+            [{ text: 'OK', onPress: () => setIsSignUp(false) }]
+          );
         } else {
-          // If no session but user was created, try to sign in
-          if (result.user) {
-            console.log('User created, attempting to sign in');
-            try {
-              await signInWithEmail(email, password);
-              console.log('Sign in after signup successful');
-              onLogin();
-            } catch (signInError: any) {
-              console.error('Error signing in after signup:', signInError);
-              setErrorMessage('Account created but unable to sign in automatically. Please try signing in.');
-              setIsSignUp(false);
-            }
-          } else {
-            setErrorMessage('Failed to create account. Please try again.');
-          }
+          setErrorMessage('Failed to create account. Please try again.');
         }
       } else {
         console.log('Starting sign in process...');
@@ -106,7 +99,18 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
       }
     } catch (error: any) {
       console.error('Auth error:', error);
-      setErrorMessage(error.message || 'Authentication failed. Please try again.');
+      
+      // Handle specific error messages
+      if (error.message?.includes('User already registered')) {
+        setErrorMessage('An account with this email already exists. Please log in instead.');
+        setIsSignUp(false);
+      } else if (error.message?.includes('Invalid login credentials')) {
+        setErrorMessage('Invalid email or password. Please try again.');
+      } else if (error.message?.includes('network') || error.message?.includes('timeout') || error.message?.includes('abort')) {
+        setErrorMessage('Network error. Please check your connection and try again.');
+      } else {
+        setErrorMessage(error.message || 'Authentication failed. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -137,7 +141,12 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
       );
     } catch (error: any) {
       console.error('Reset password error:', error);
-      setErrorMessage(error.message || 'Failed to send reset email. Please try again.');
+      
+      if (error.message?.includes('network') || error.message?.includes('timeout') || error.message?.includes('abort')) {
+        setErrorMessage('Network error. Please check your connection and try again.');
+      } else {
+        setErrorMessage(error.message || 'Failed to send reset email. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
