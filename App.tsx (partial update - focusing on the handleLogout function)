@@ -1,0 +1,29 @@
+// Handle logout - simplified and direct
+const handleLogout = async () => {
+  console.log('Direct handleLogout called in App.tsx');
+  
+  // Set loading state
+  setIsLoading(true);
+  
+  try {
+    // Clear storage
+    console.log('Clearing AsyncStorage in App.tsx');
+    await AsyncStorage.clear();
+    
+    // Reset state
+    console.log('Resetting state in App.tsx');
+    setUserName('');
+    
+    // Force app state to login
+    console.log('Setting appState to login in App.tsx');
+    setAppState('login');
+  } catch (error) {
+    console.error('Error in App.tsx handleLogout:', error);
+    
+    // Force app state to login anyway
+    console.log('Forcing appState to login after error');
+    setAppState('login');
+  } finally {
+    setIsLoading(false);
+  }
+};

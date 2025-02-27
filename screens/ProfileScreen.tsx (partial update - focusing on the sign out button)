@@ -1,0 +1,67 @@
+// Direct sign out function with minimal steps
+const handleDirectSignOut = async () => {
+  Alert.alert(
+    'Sign Out',
+    'Are you sure you want to sign out?',
+    [
+      {
+        text: 'Cancel',
+        style: 'cancel',
+      },
+      {
+        text: 'Sign Out',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            // Show loading state
+            setIsSigningOut(true);
+            console.log('User confirmed direct sign out');
+            
+            // Close the modal first
+            onClose();
+            
+            // Short delay to let modal close
+            setTimeout(async () => {
+              try {
+                // Clear all storage
+                console.log('Clearing AsyncStorage');
+                await AsyncStorage.clear();
+                
+                // Sign out from Supabase
+                console.log('Signing out from Supabase');
+                await supabase.auth.signOut();
+                
+                // Call the logout callback
+                console.log('Calling onLogout callback');
+                onLogout();
+              } catch (error) {
+                console.error('Error during direct sign out:', error);
+                Alert.alert('Error', 'Failed to sign out. Please try again.');
+              }
+            }, 300);
+          } catch (error) {
+            console.error('Error in direct sign out:', error);
+            setIsSigningOut(false);
+          }
+        },
+      },
+    ],
+    { cancelable: true }
+  );
+};
+
+// Then in your JSX, replace the existing sign out button with:
+<TouchableOpacity 
+  style={styles.signOutButton}
+  onPress={handleDirectSignOut}
+  disabled={isSigningOut}
+>
+  {isSigningOut ? (
+    <ActivityIndicator size="small" color={theme.colors.error} />
+  ) : (
+    <>
+      <Ionicons name="log-out-outline" size={24} color={theme.colors.error} />
+      <Text style={styles.signOutText}>Sign Out</Text>
+    </>
+  )}
+</TouchableOpacity>
