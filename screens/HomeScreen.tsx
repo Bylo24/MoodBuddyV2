@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, ScrollView, Dimensions, SafeAreaView } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, Dimensions, SafeAreaView, StatusBar } from 'react-native';
 import { theme } from '../theme/theme';
 import MoodSlider from '../components/MoodSlider';
 import ActivityCard from '../components/ActivityCard';
@@ -32,6 +32,7 @@ export default function HomeScreen() {
   
   return (
     <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="light-content" backgroundColor={theme.colors.background} />
       <ScrollView 
         style={styles.container} 
         contentContainerStyle={styles.contentContainer}
@@ -39,7 +40,7 @@ export default function HomeScreen() {
       >
         <View style={styles.header}>
           <Text style={styles.greeting}>Hey {userName},</Text>
-          <Text style={styles.subGreeting}>let's make today great! 😊</Text>
+          <Text style={styles.subGreeting}>let's make today great! ✨</Text>
           <Text style={styles.date}>{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</Text>
         </View>
         

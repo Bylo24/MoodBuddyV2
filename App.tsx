@@ -7,7 +7,7 @@ import { theme } from './theme/theme';
 export default function App() {
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar style="auto" />
+      <StatusBar style="light" />
       <HomeScreen />
     </SafeAreaView>
   );

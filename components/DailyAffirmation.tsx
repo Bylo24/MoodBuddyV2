@@ -19,7 +19,7 @@ export default function DailyAffirmation({ quote, author }: DailyAffirmationProp
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: theme.colors.primary + '15', // 15% opacity
+    backgroundColor: theme.colors.primary + '22', // 13% opacity
     borderRadius: 16,
     padding: 16,
     marginBottom: 24,
@@ -32,7 +32,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 4,
     left: 10,
-    opacity: 0.2,
+    opacity: 0.3,
   },
   quote: {
     fontSize: 15,

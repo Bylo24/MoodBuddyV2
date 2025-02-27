@@ -1,23 +1,28 @@
 export const theme = {
   colors: {
-    primary: '#6A5ACD', // Slate blue - calming color
-    secondary: '#9370DB', // Medium purple
+    // Dark theme colors
+    primary: '#9370DB', // Medium purple
+    secondary: '#6A5ACD', // Slate blue
     accent: '#FFD700', // Gold - for positive elements
-    background: '#F8F8FF', // Ghost white - light background
-    card: '#FFFFFF', // White for cards
-    text: '#333333', // Dark text
-    subtext: '#666666', // Lighter text for subtitles
-    border: '#E0E0E0', // Light border
+    background: '#121212', // Very dark gray (almost black)
+    card: '#1E1E1E', // Dark gray for cards
+    text: '#FFFFFF', // White text
+    subtext: '#B0B0B0', // Light gray for subtitles
+    border: '#333333', // Dark border
     success: '#4CAF50', // Green for positive moods
     warning: '#FFC107', // Yellow/amber for neutral moods
     error: '#F44336', // Red for negative moods
     info: '#2196F3', // Blue for informational elements
-    // Mood colors
+    // Mood colors (slightly adjusted for dark theme)
     mood1: '#F44336', // Red - terrible
     mood2: '#FF9800', // Orange - not good
     mood3: '#FFC107', // Yellow - okay
     mood4: '#8BC34A', // Light green - good
     mood5: '#4CAF50', // Green - great
+    // Additional dark theme colors
+    cardAlt: '#252525', // Slightly lighter card alternative
+    overlay: 'rgba(0, 0, 0, 0.5)', // Overlay for modals
+    highlight: '#9370DB33', // Primary with 20% opacity
   },
   spacing: {
     xs: 4,
@@ -52,23 +57,23 @@ export const theme = {
   shadows: {
     small: {
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 0.2,
-      shadowRadius: 1.41,
-      elevation: 2,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.3,
+      shadowRadius: 2,
+      elevation: 3,
     },
     medium: {
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.23,
-      shadowRadius: 2.62,
-      elevation: 4,
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.4,
+      shadowRadius: 4,
+      elevation: 5,
     },
     large: {
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 4.65,
+      shadowOffset: { width: 0, height: 5 },
+      shadowOpacity: 0.5,
+      shadowRadius: 6,
       elevation: 8,
     },
   },

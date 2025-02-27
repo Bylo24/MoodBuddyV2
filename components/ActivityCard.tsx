@@ -28,7 +28,7 @@ export default function ActivityCard({ activity, onPress }: ActivityCardProps) {
     <Pressable 
       style={({ pressed }) => [
         styles.container,
-        pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }
+        pressed && { opacity: 0.8, transform: [{ scale: 0.98 }] }
       ]} 
       onPress={onPress}
     >
@@ -82,15 +82,15 @@ function capitalizeFirstLetter(string: string): string {
 function getCategoryStyle(category: Activity['category']) {
   switch (category) {
     case 'mindfulness':
-      return { backgroundColor: '#E0F7FA' }; // Light cyan
+      return { backgroundColor: '#1A3A40' }; // Dark cyan
     case 'exercise':
-      return { backgroundColor: '#E8F5E9' }; // Light green
+      return { backgroundColor: '#1A3B1E' }; // Dark green
     case 'social':
-      return { backgroundColor: '#FFF3E0' }; // Light orange
+      return { backgroundColor: '#3A2E1A' }; // Dark orange
     case 'creative':
-      return { backgroundColor: '#F3E5F5' }; // Light purple
+      return { backgroundColor: '#2E1A3A' }; // Dark purple
     case 'relaxation':
-      return { backgroundColor: '#E3F2FD' }; // Light blue
+      return { backgroundColor: '#1A2E3A' }; // Dark blue
     default:
       return {};
   }
@@ -117,10 +117,12 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     flexDirection: 'row',
     width: '100%',
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   iconContainer: {
     width: 50,
-    backgroundColor: theme.colors.primary + '20', // 20% opacity
+    backgroundColor: theme.colors.primary + '33', // 20% opacity
     alignItems: 'center',
     justifyContent: 'center',
     padding: 8,
@@ -176,6 +178,7 @@ const styles = StyleSheet.create({
   categoryText: {
     fontSize: 12,
     fontWeight: theme.fontWeights.medium,
+    color: theme.colors.text,
   },
   impactContainer: {
     flexDirection: 'row',

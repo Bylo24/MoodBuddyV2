@@ -70,8 +70,6 @@ export default function MoodSlider({ value, onValueChange }: MoodSliderProps) {
         minimumTrackTintColor={currentMood.color}
         maximumTrackTintColor={theme.colors.border}
         thumbTintColor={currentMood.color}
-        trackHeight={8}
-        thumbSize={24}
       />
       
       <View style={styles.labelContainer}>
@@ -109,6 +107,10 @@ const styles = StyleSheet.create({
   container: {
     marginVertical: 16,
     width: '100%',
+    backgroundColor: theme.colors.card,
+    borderRadius: 16,
+    padding: 16,
+    ...theme.shadows.small,
   },
   slider: {
     width: '100%',
