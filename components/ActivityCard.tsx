@@ -9,8 +9,24 @@ interface ActivityCardProps {
 }
 
 export default function ActivityCard({ activity, onPress }: ActivityCardProps) {
+  // Get icon based on activity category
+  const getCategoryIcon = (category: Activity['category']) => {
+    switch (category) {
+      case 'mindfulness': return '🧘‍♀️';
+      case 'exercise': return '🏃‍♂️';
+      case 'social': return '👥';
+      case 'creative': return '🎨';
+      case 'relaxation': return '🛀';
+      default: return '✨';
+    }
+  };
+
   return (
     <Pressable style={styles.container} onPress={onPress}>
+      <View style={styles.iconContainer}>
+        <Text style={styles.icon}>{getCategoryIcon(activity.category)}</Text>
+      </View>
+      
       <View style={styles.content}>
         <View style={styles.header}>
           <Text style={styles.title}>{activity.title}</Text>
@@ -19,7 +35,9 @@ export default function ActivityCard({ activity, onPress }: ActivityCardProps) {
           </View>
         </View>
         
-        <Text style={styles.description}>{activity.description}</Text>
+        <Text style={styles.description} numberOfLines={2}>
+          {activity.description}
+        </Text>
         
         <View style={styles.footer}>
           <View style={[styles.categoryBadge, getCategoryStyle(activity.category)]}>
@@ -34,6 +52,14 @@ export default function ActivityCard({ activity, onPress }: ActivityCardProps) {
               {capitalizeFirstLetter(activity.moodImpact)}
             </Text>
           </View>
+        </View>
+        
+        {/* Progress indicator */}
+        <View style={styles.progressContainer}>
+          <View style={styles.progressBar}>
+            <View style={[styles.progressFill, { width: '30%' }]} />
+          </View>
+          <Text style={styles.progressText}>Complete 3 more for a reward!</Text>
         </View>
       </View>
     </Pressable>
@@ -81,8 +107,20 @@ const styles = StyleSheet.create({
     marginVertical: theme.spacing.sm,
     ...theme.shadows.medium,
     overflow: 'hidden',
+    flexDirection: 'row',
+  },
+  iconContainer: {
+    width: 60,
+    backgroundColor: theme.colors.primary + '20', // 20% opacity
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: theme.spacing.sm,
+  },
+  icon: {
+    fontSize: 28,
   },
   content: {
+    flex: 1,
     padding: theme.spacing.md,
   },
   header: {
@@ -96,6 +134,7 @@ const styles = StyleSheet.create({
     fontWeight: theme.fontWeights.bold,
     color: theme.colors.text,
     flex: 1,
+    lineHeight: theme.lineHeights.tight * theme.fontSizes.lg,
   },
   durationContainer: {
     backgroundColor: theme.colors.primary,
@@ -112,11 +151,13 @@ const styles = StyleSheet.create({
     fontSize: theme.fontSizes.md,
     color: theme.colors.subtext,
     marginBottom: theme.spacing.md,
+    lineHeight: theme.lineHeights.normal * theme.fontSizes.md,
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: theme.spacing.sm,
   },
   categoryBadge: {
     paddingHorizontal: theme.spacing.sm,
@@ -138,5 +179,24 @@ const styles = StyleSheet.create({
   impactValue: {
     fontSize: theme.fontSizes.sm,
     fontWeight: theme.fontWeights.semibold,
+  },
+  progressContainer: {
+    marginTop: theme.spacing.xs,
+  },
+  progressBar: {
+    height: 4,
+    backgroundColor: theme.colors.border,
+    borderRadius: theme.borderRadius.round,
+    overflow: 'hidden',
+    marginBottom: theme.spacing.xs,
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: theme.colors.accent,
+  },
+  progressText: {
+    fontSize: theme.fontSizes.xs,
+    color: theme.colors.subtext,
+    fontStyle: 'italic',
   },
 });

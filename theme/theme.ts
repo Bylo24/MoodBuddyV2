@@ -12,6 +12,12 @@ export const theme = {
     warning: '#FFC107', // Yellow/amber for neutral moods
     error: '#F44336', // Red for negative moods
     info: '#2196F3', // Blue for informational elements
+    // Mood colors
+    mood1: '#F44336', // Red - terrible
+    mood2: '#FF9800', // Orange - not good
+    mood3: '#FFC107', // Yellow - okay
+    mood4: '#8BC34A', // Light green - good
+    mood5: '#4CAF50', // Green - great
   },
   spacing: {
     xs: 4,
@@ -65,6 +71,11 @@ export const theme = {
       shadowRadius: 4.65,
       elevation: 8,
     },
+  },
+  lineHeights: {
+    tight: 1.25,
+    normal: 1.5,
+    relaxed: 1.75,
   },
 };
 
