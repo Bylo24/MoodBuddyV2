@@ -1,8 +1,8 @@
 {
   "expo": {
     "owner": "appacella",
-    "name": "Mood Buddy",
-    "slug": "mood-buddy",
+    "name": "user-app",
+    "slug": "user-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -11,31 +11,21 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#F8F9FA"
+      "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.appacella.moodbuddy"
+      "supportsTablet": true
     },
     "android": {
-      "package": "com.appacella.moodbuddy",
+      "package": "com.appacella.userapp",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#F8F9FA"
+        "foregroundImage": "./assets/images/appacella-logo-white.png",
+        "backgroundColor": "#ffffff"
       }
     },
     "web": {
       "bundler": "metro",
-      "favicon": "./assets/favicon.png"
-    },
-    "plugins": [
-      [
-        "expo-notifications",
-        {
-          "icon": "./assets/icon.png",
-          "color": "#ffffff"
-        }
-      ]
-    ]
+      "favicon": "./assets/images/favicon.png"
+    }
   }
 }
