@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, ScrollView, Dimensions, SafeAreaView, StatusBar, AppState } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, Dimensions, SafeAreaView, StatusBar, AppState, ActivityIndicator } from 'react-native';
 import { theme } from '../theme/theme';
 import MoodSlider from '../components/MoodSlider';
 import ActivityCard from '../components/ActivityCard';
 import MoodTrendGraph from '../components/MoodTrendGraph';
 import QuoteComponent from '../components/QuoteComponent';
-import { recentMoodEntries, recommendedActivities } from '../data/mockData';
 import { MoodRating } from '../types';
+import { getTodayMoodEntry, getRecentMoodEntries, getMoodStreak, getAverageMood } from '../services/moodService';
+import { getCurrentUser, isAuthenticated } from '../services/authService';
+import { recommendedActivities } from '../data/mockData';
 
 // Get screen dimensions
 const { width: screenWidth } = Dimensions.get('window');
@@ -14,25 +16,69 @@ const { width: screenWidth } = Dimensions.get('window');
 export default function HomeScreen() {
   // State for selected mood (just for UI demonstration)
   const [selectedMood, setSelectedMood] = useState<MoodRating>(3);
+  const [userName, setUserName] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [streak, setStreak] = useState(0);
+  const [averageMood, setAverageMood] = useState<number | null>(null);
+  const [todayMood, setTodayMood] = useState<MoodRating | null>(null);
+  const [isSliderDisabled, setIsSliderDisabled] = useState(false);
   
   // State to force quote refresh
   const [quoteKey, setQuoteKey] = useState(Date.now());
   
-  // Get the most recent mood entry
-  const latestMood = recentMoodEntries[0];
-  
-  // Calculate average mood for the last 5 entries
-  const averageMood = recentMoodEntries.reduce((sum, entry) => sum + entry.rating, 0) / recentMoodEntries.length;
-  
-  // User name (would come from user profile in a real app)
-  const userName = "Alex";
+  // Load user data and mood information
+  useEffect(() => {
+    const loadUserData = async () => {
+      setIsLoading(true);
+      try {
+        const isLoggedIn = await isAuthenticated();
+        if (!isLoggedIn) {
+          // Handle not authenticated state
+          console.log('User not authenticated');
+          setIsLoading(false);
+          return;
+        }
+        
+        const user = await getCurrentUser();
+        if (user) {
+          // Extract name from email or use default
+          const name = user.email ? user.email.split('@')[0] : 'Friend';
+          setUserName(name);
+          
+          // Load mood data
+          const todayEntry = await getTodayMoodEntry();
+          if (todayEntry) {
+            setTodayMood(todayEntry.rating);
+            setSelectedMood(todayEntry.rating);
+          }
+          
+          // Load streak
+          const currentStreak = await getMoodStreak();
+          setStreak(currentStreak);
+          
+          // Load average mood
+          const avgMood = await getAverageMood(7);
+          setAverageMood(avgMood);
+        }
+      } catch (error) {
+        console.error('Error loading user data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadUserData();
+  }, []);
   
   // Listen for app state changes to refresh quote when app comes to foreground
   useEffect(() => {
     const subscription = AppState.addEventListener('change', nextAppState => {
       if (nextAppState === 'active') {
-        // App has come to the foreground, refresh quote with a new timestamp
+        // App has come to the foreground, refresh quote
         setQuoteKey(Date.now());
+        
+        // Also refresh mood data
+        refreshMoodData();
       }
     });
 
@@ -40,6 +86,71 @@ export default function HomeScreen() {
       subscription.remove();
     };
   }, []);
+  
+  // Refresh mood data
+  const refreshMoodData = async () => {
+    try {
+      // Load today's mood
+      const todayEntry = await getTodayMoodEntry();
+      if (todayEntry) {
+        setTodayMood(todayEntry.rating);
+        setSelectedMood(todayEntry.rating);
+      } else {
+        setTodayMood(null);
+      }
+      
+      // Load streak
+      const currentStreak = await getMoodStreak();
+      setStreak(currentStreak);
+      
+      // Load average mood
+      const avgMood = await getAverageMood(7);
+      setAverageMood(avgMood);
+    } catch (error) {
+      console.error('Error refreshing mood data:', error);
+    }
+  };
+  
+  // Handle mood change
+  const handleMoodChange = (mood: MoodRating) => {
+    setSelectedMood(mood);
+  };
+  
+  function getMoodEmoji(rating: number | null): string {
+    if (rating === null) return '–';
+    switch (rating) {
+      case 1: return '😢';
+      case 2: return '😕';
+      case 3: return '😐';
+      case 4: return '🙂';
+      case 5: return '😄';
+      default: return '–';
+    }
+  }
+  
+  function getMoodColor(rating: number | null): string {
+    if (rating === null) return theme.colors.text;
+    switch (rating) {
+      case 1: return theme.colors.mood1;
+      case 2: return theme.colors.mood2;
+      case 3: return theme.colors.mood3;
+      case 4: return theme.colors.mood4;
+      case 5: return theme.colors.mood5;
+      default: return theme.colors.text;
+    }
+  }
+  
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar barStyle="light-content" backgroundColor={theme.colors.background} />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+          <Text style={styles.loadingText}>Loading your mood data...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
   
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -59,7 +170,11 @@ export default function HomeScreen() {
         
         <View style={styles.moodCheckInContainer}>
           <Text style={styles.sectionTitle}>How are you feeling today?</Text>
-          <MoodSlider value={selectedMood} onValueChange={setSelectedMood} />
+          <MoodSlider 
+            value={selectedMood} 
+            onValueChange={handleMoodChange} 
+            disabled={isSliderDisabled}
+          />
         </View>
         
         <View style={styles.moodSummaryContainer}>
@@ -71,9 +186,9 @@ export default function HomeScreen() {
                 <Text style={styles.summaryLabel}>Today</Text>
                 <Text style={[
                   styles.summaryValue,
-                  { color: getMoodColor(latestMood.rating) }
+                  { color: getMoodColor(todayMood) }
                 ]}>
-                  {latestMood ? getMoodEmoji(latestMood.rating) : '–'}
+                  {getMoodEmoji(todayMood)}
                 </Text>
               </View>
               
@@ -83,9 +198,9 @@ export default function HomeScreen() {
                 <Text style={styles.summaryLabel}>Weekly Avg</Text>
                 <Text style={[
                   styles.summaryValue,
-                  { color: getMoodColor(Math.round(averageMood)) }
+                  { color: getMoodColor(averageMood ? Math.round(averageMood) : null) }
                 ]}>
-                  {averageMood ? getMoodEmoji(Math.round(averageMood) as 1|2|3|4|5) : '–'}
+                  {averageMood ? getMoodEmoji(Math.round(averageMood) as MoodRating) : '–'}
                 </Text>
               </View>
               
@@ -93,13 +208,13 @@ export default function HomeScreen() {
               
               <View style={styles.summaryItem}>
                 <Text style={styles.summaryLabel}>Streak</Text>
-                <Text style={[styles.summaryValue, styles.streakValue]}>5 days</Text>
+                <Text style={[styles.summaryValue, styles.streakValue]}>{streak} days</Text>
               </View>
             </View>
             
             <View style={styles.trendContainer}>
               <Text style={styles.trendTitle}>Your Mood Trend</Text>
-              <MoodTrendGraph moodEntries={recentMoodEntries} />
+              <MoodTrendGraph days={5} />
             </View>
           </View>
         </View>
@@ -119,28 +234,6 @@ export default function HomeScreen() {
       </ScrollView>
     </SafeAreaView>
   );
-}
-
-function getMoodEmoji(rating: number): string {
-  switch (rating) {
-    case 1: return '😢';
-    case 2: return '😕';
-    case 3: return '😐';
-    case 4: return '🙂';
-    case 5: return '😄';
-    default: return '–';
-  }
-}
-
-function getMoodColor(rating: number): string {
-  switch (rating) {
-    case 1: return theme.colors.mood1;
-    case 2: return theme.colors.mood2;
-    case 3: return theme.colors.mood3;
-    case 4: return theme.colors.mood4;
-    case 5: return theme.colors.mood5;
-    default: return theme.colors.text;
-  }
 }
 
 const styles = StyleSheet.create({
@@ -248,5 +341,15 @@ const styles = StyleSheet.create({
   },
   activityItem: {
     marginBottom: 12,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: theme.colors.subtext,
   },
 });

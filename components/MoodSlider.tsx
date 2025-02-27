@@ -1,15 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, Animated, Dimensions } from 'react-native';
+import { StyleSheet, Text, View, Animated, Alert } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { MoodRating } from '../types';
 import { theme } from '../theme/theme';
-
-// Get screen dimensions
-const { width: screenWidth } = Dimensions.get('window');
+import { getTodayMoodEntry, saveTodayMood, isToday, canEditMood } from '../services/moodService';
 
 interface MoodSliderProps {
   value: MoodRating;
   onValueChange: (value: MoodRating) => void;
+  disabled?: boolean;
 }
 
 interface MoodOption {
@@ -19,9 +18,15 @@ interface MoodOption {
   color: string;
 }
 
-export default function MoodSlider({ value, onValueChange }: MoodSliderProps) {
-  // Animation value for emoji scaling
+export default function MoodSlider({ 
+  value, 
+  onValueChange,
+  disabled = false
+}: MoodSliderProps) {
   const [scaleAnim] = useState(new Animated.Value(1));
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+  const [isEditable, setIsEditable] = useState(true);
   
   // Define mood options
   const moodOptions: MoodOption[] = [
@@ -51,11 +56,45 @@ export default function MoodSlider({ value, onValueChange }: MoodSliderProps) {
     ]).start();
   }, [value]);
   
+  // Load today's mood entry when component mounts
+  useEffect(() => {
+    const loadTodayMood = async () => {
+      try {
+        const entry = await getTodayMoodEntry();
+        if (entry) {
+          onValueChange(entry.rating);
+          setIsSaved(true);
+          
+          // Check if the entry is editable (today's entry)
+          setIsEditable(canEditMood(entry.date));
+        }
+      } catch (error) {
+        console.error('Error loading today\'s mood:', error);
+      }
+    };
+    
+    loadTodayMood();
+  }, []);
+  
   // Handle slider value change
-  const handleValueChange = (sliderValue: number) => {
+  const handleValueChange = async (sliderValue: number) => {
     // Convert to integer between 1-5
     const moodRating = Math.round(sliderValue) as MoodRating;
+    
+    // Update local state
     onValueChange(moodRating);
+    
+    // Save to database
+    try {
+      setIsLoading(true);
+      await saveTodayMood(moodRating);
+      setIsSaved(true);
+    } catch (error) {
+      console.error('Error saving mood:', error);
+      Alert.alert('Error', 'Failed to save your mood. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
   
   return (
@@ -66,10 +105,12 @@ export default function MoodSlider({ value, onValueChange }: MoodSliderProps) {
         maximumValue={5}
         step={1}
         value={value}
-        onValueChange={handleValueChange}
+        onValueChange={(val) => onValueChange(Math.round(val) as MoodRating)}
+        onSlidingComplete={handleValueChange}
         minimumTrackTintColor={currentMood.color}
         maximumTrackTintColor={theme.colors.border}
         thumbTintColor={currentMood.color}
+        disabled={disabled || !isEditable}
       />
       
       <View style={styles.labelContainer}>
@@ -98,6 +139,14 @@ export default function MoodSlider({ value, onValueChange }: MoodSliderProps) {
         <Text style={[styles.moodLabel, { color: currentMood.color }]}>
           {currentMood.label}
         </Text>
+        
+        {isSaved && (
+          <Text style={styles.savedText}>
+            {isEditable 
+              ? "Today's mood is saved" 
+              : "This mood is locked and can't be changed"}
+          </Text>
+        )}
       </View>
     </View>
   );
@@ -138,5 +187,11 @@ const styles = StyleSheet.create({
   moodLabel: {
     fontSize: 20,
     fontWeight: theme.fontWeights.bold,
+  },
+  savedText: {
+    fontSize: 12,
+    color: theme.colors.subtext,
+    marginTop: 8,
+    fontStyle: 'italic',
   },
 });

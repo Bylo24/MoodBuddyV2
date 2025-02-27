@@ -1,10 +1,12 @@
 export type MoodRating = 1 | 2 | 3 | 4 | 5;
 
 export type MoodEntry = {
-  id: string;
+  id?: string;
+  user_id: string;
   date: string;
   rating: MoodRating;
   note?: string;
+  created_at?: string;
 };
 
 export type Activity = {
@@ -15,4 +17,10 @@ export type Activity = {
   category: 'mindfulness' | 'exercise' | 'social' | 'creative' | 'relaxation';
   moodImpact: 'low' | 'medium' | 'high';
   imageUrl?: string;
+};
+
+export type User = {
+  id: string;
+  email: string;
+  created_at: string;
 };

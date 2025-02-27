@@ -1,20 +1,38 @@
-import React from 'react';
-import { StyleSheet, View, Text, Dimensions } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, View, Text, Dimensions, ActivityIndicator } from 'react-native';
 import { MoodEntry } from '../types';
 import { theme } from '../theme/theme';
+import { getRecentMoodEntries } from '../services/moodService';
 
 // Get screen dimensions
 const { width: screenWidth } = Dimensions.get('window');
 
 interface MoodTrendGraphProps {
-  moodEntries: MoodEntry[];
   days?: number;
 }
 
 export default function MoodTrendGraph({ 
-  moodEntries, 
   days = 5 
 }: MoodTrendGraphProps) {
+  const [moodEntries, setMoodEntries] = useState<MoodEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    const loadMoodEntries = async () => {
+      setLoading(true);
+      try {
+        const entries = await getRecentMoodEntries(days);
+        setMoodEntries(entries);
+      } catch (error) {
+        console.error('Error loading mood entries:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadMoodEntries();
+  }, [days]);
+  
   // Take only the most recent entries up to the specified number of days
   const recentEntries = moodEntries.slice(0, days).reverse();
   
@@ -40,11 +58,29 @@ export default function MoodTrendGraph({
     return date.toLocaleDateString('en-US', { weekday: 'short' }).slice(0, 1);
   };
 
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="small" color={theme.colors.primary} />
+        <Text style={styles.loadingText}>Loading mood data...</Text>
+      </View>
+    );
+  }
+
+  if (recentEntries.length === 0) {
+    return (
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyText}>No mood data available yet.</Text>
+        <Text style={styles.emptySubtext}>Track your mood daily to see trends.</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.graphContainer}>
         {recentEntries.map((entry, index) => (
-          <View key={entry.id} style={styles.dayColumn}>
+          <View key={entry.id || index} style={styles.dayColumn}>
             <View style={styles.barContainer}>
               <View 
                 style={[
@@ -109,5 +145,30 @@ const styles = StyleSheet.create({
     fontWeight: theme.fontWeights.semibold,
     color: theme.colors.success,
     textAlign: 'center',
+  },
+  loadingContainer: {
+    height: 80,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 8,
+    fontSize: 14,
+    color: theme.colors.subtext,
+  },
+  emptyContainer: {
+    height: 80,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 14,
+    color: theme.colors.subtext,
+    fontWeight: theme.fontWeights.medium,
+  },
+  emptySubtext: {
+    fontSize: 12,
+    color: theme.colors.subtext,
+    marginTop: 4,
   },
 });
