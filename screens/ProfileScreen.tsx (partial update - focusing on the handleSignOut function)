@@ -1,125 +1,50 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Alert, ActivityIndicator, ScrollView } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { theme } from '../theme/theme';
-import { getCurrentUser } from '../services/authService';
-import { getMoodStreak, getAverageMood } from '../services/moodService';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { supabase } from '../utils/supabaseClient';
-
-interface ProfileScreenProps {
-  onClose: () => void;
-  onLogout: () => void;
-}
-
-export default function ProfileScreen({ onClose, onLogout }: ProfileScreenProps) {
-  const [userName, setUserName] = useState<string>('');
-  const [email, setEmail] = useState<string>('');
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSigningOut, setIsSigningOut] = useState(false);
-  const [streak, setStreak] = useState(0);
-  const [averageMood, setAverageMood] = useState<number | null>(null);
-  
-  useEffect(() => {
-    const loadUserData = async () => {
-      setIsLoading(true);
-      try {
-        const user = await getCurrentUser();
-        if (user) {
-          // Extract name from email or use default
-          const name = user.email ? user.email.split('@')[0] : 'User';
-          setUserName(name);
-          setEmail(user.email || '');
-          
-          // Load streak
-          const currentStreak = await getMoodStreak();
-          setStreak(currentStreak);
-          
-          // Load average mood
-          const avgMood = await getAverageMood(30); // Last 30 days
-          setAverageMood(avgMood);
-        }
-      } catch (error) {
-        console.error('Error loading user data:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    loadUserData();
-  }, []);
-  
-  // New direct sign out function
-  const handleSignOut = () => {
-    Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Sign Out', 
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setIsSigningOut(true);
-              
-              // Close the modal first
-              onClose();
-              
-              // Wait for modal to close
-              setTimeout(async () => {
-                try {
-                  // Clear AsyncStorage
-                  await AsyncStorage.multiRemove([
-                    'user_display_name',
-                    'supabase.auth.token',
-                    'supabase.auth.refreshToken',
-                    'supabase.auth.expires_at'
-                  ]);
-                  
-                  // Sign out from Supabase
-                  await supabase.auth.signOut();
-                  
-                  // Call the onLogout callback
-                  onLogout();
-                } catch (error) {
-                  console.error('Error during sign out:', error);
-                  Alert.alert('Error', 'Failed to sign out. Please try again.');
-                }
-              }, 300);
-            } catch (error) {
-              console.error('Error in sign out process:', error);
-              setIsSigningOut(false);
-            }
+const handleSignOut = async () => {
+  Alert.alert(
+    'Sign Out',
+    'Are you sure you want to sign out?',
+    [
+      {
+        text: 'Cancel',
+        style: 'cancel',
+      },
+      {
+        text: 'Sign Out',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            setIsSigningOut(true);
+            console.log('User confirmed sign out, proceeding...');
+            
+            // Close the modal first
+            onClose();
+            
+            // Wait a moment for the modal to close
+            setTimeout(async () => {
+              try {
+                // Call signOut from authService
+                await signOut();
+                console.log('Sign out successful from ProfileScreen');
+                
+                // Clear user data from AsyncStorage
+                await AsyncStorage.removeItem('user_display_name');
+                console.log('Cleared user data from AsyncStorage');
+                
+                // Call the onLogout callback directly
+                console.log('Calling onLogout callback from ProfileScreen');
+                onLogout();
+              } catch (error) {
+                console.error('Error during sign out:', error);
+                Alert.alert('Error', 'Failed to sign out. Please try again.');
+              }
+            }, 300);
+          } catch (error) {
+            console.error('Error in sign out process:', error);
+            Alert.alert('Error', 'Failed to sign out. Please try again.');
+            setIsSigningOut(false);
           }
-        }
-      ]
-    );
-  };
-  
-  // Keep the rest of the component the same...
-  
-  return (
-    <View style={styles.container}>
-      {/* Keep all the existing UI the same */}
-      
-      {/* Just update the sign out button */}
-      <TouchableOpacity 
-        style={styles.signOutButton}
-        onPress={handleSignOut}
-        disabled={isSigningOut}
-      >
-        {isSigningOut ? (
-          <ActivityIndicator size="small" color={theme.colors.error} />
-        ) : (
-          <>
-            <Ionicons name="log-out-outline" size={24} color={theme.colors.error} />
-            <Text style={styles.signOutText}>Sign Out</Text>
-          </>
-        )}
-      </TouchableOpacity>
-    </View>
+        },
+      },
+    ],
+    { cancelable: true }
   );
-}
-
-// Keep all the styles the same
+};
