@@ -11,6 +11,7 @@ import { MoodRating } from '../types';
 import { getTodayMoodEntry, getRecentMoodEntries, getMoodStreak, getWeeklyAverageMood, getCurrentWeekMoodEntries, getTodayDate } from '../services/moodService';
 import { getCurrentUser, isAuthenticated } from '../services/authService';
 import { recommendedActivities } from '../data/mockData';
+import { supabase } from '../utils/supabaseClient';
 
 // Get screen dimensions
 const { width: screenWidth } = Dimensions.get('window');
@@ -44,6 +45,13 @@ export default function HomeScreen({ onLogout }: HomeScreenProps) {
   const refreshMoodData = useCallback(async () => {
     try {
       console.log('Refreshing mood data...');
+      
+      // Check if user is authenticated
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session) {
+        console.error('Session error or no session:', sessionError);
+        return;
+      }
       
       // Load today's mood
       const todayEntry = await getTodayMoodEntry();
@@ -115,7 +123,22 @@ export default function HomeScreen({ onLogout }: HomeScreenProps) {
     };
     
     loadUserData();
-  }, [refreshMoodData]);
+    
+    // Listen for auth state changes
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        console.log('Auth state changed, reloading user data');
+        loadUserData();
+      }
+    });
+    
+    return () => {
+      // Clean up auth listener
+      if (authListener && authListener.subscription) {
+        authListener.subscription.unsubscribe();
+      }
+    };
+  }, [refreshMoodData, onLogout]);
   
   // Check for date changes when app comes to foreground
   useEffect(() => {

@@ -34,18 +34,26 @@ export const isPastDate = (dateString: string): boolean => {
 // Get mood entry for a specific date
 export const getMoodEntryForDate = async (date: string): Promise<MoodEntry | null> => {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    // Get current user
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError) {
+      console.error('Session error:', sessionError);
+      return null;
+    }
+    
+    if (!session || !session.user) {
       console.error('No authenticated user found');
       return null;
     }
     
-    console.log(`Querying mood entry for date: ${date} and user: ${user.id}`);
+    const userId = session.user.id;
+    console.log(`Querying mood entry for date: ${date} and user: ${userId}`);
     
+    // Query the database
     const { data, error } = await supabase
       .from('mood_entries')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .eq('date', date)
       .single();
     
@@ -72,24 +80,7 @@ export const getTodayMoodEntry = async (): Promise<MoodEntry | null> => {
   try {
     const today = getTodayDate();
     console.log(`Getting mood entry for today: ${today}`);
-    
-    // Check if user is authenticated
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      console.error('No authenticated user found in getTodayMoodEntry');
-      return null;
-    }
-    
-    // Fetch today's mood entry
-    const entry = await getMoodEntryForDate(today);
-    
-    if (entry) {
-      console.log('Found today\'s mood entry:', entry);
-    } else {
-      console.log('No mood entry found for today');
-    }
-    
-    return entry;
+    return await getMoodEntryForDate(today);
   } catch (error) {
     console.error('Error in getTodayMoodEntry:', error);
     return null;
@@ -99,14 +90,21 @@ export const getTodayMoodEntry = async (): Promise<MoodEntry | null> => {
 // Save mood entry for today
 export const saveTodayMood = async (rating: MoodRating, note?: string): Promise<MoodEntry | null> => {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    // Get current user
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError) {
+      console.error('Session error:', sessionError);
+      return null;
+    }
+    
+    if (!session || !session.user) {
       console.error('No authenticated user found');
       return null;
     }
     
+    const userId = session.user.id;
     const today = getTodayDate();
-    console.log(`Saving mood for today (${today}): ${rating}`);
+    console.log(`Saving mood for today (${today}): ${rating} for user ${userId}`);
     
     // Check if an entry already exists for today
     const existingEntry = await getMoodEntryForDate(today);
@@ -134,7 +132,7 @@ export const saveTodayMood = async (rating: MoodRating, note?: string): Promise<
       const { data, error } = await supabase
         .from('mood_entries')
         .insert([
-          { user_id: user.id, date: today, rating, note }
+          { user_id: userId, date: today, rating, note }
         ])
         .select()
         .single();
@@ -156,16 +154,24 @@ export const saveTodayMood = async (rating: MoodRating, note?: string): Promise<
 // Get all mood entries sorted by date
 export const getAllMoodEntries = async (): Promise<MoodEntry[]> => {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    // Get current user
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError) {
+      console.error('Session error:', sessionError);
+      return [];
+    }
+    
+    if (!session || !session.user) {
       console.error('No authenticated user found');
       return [];
     }
     
+    const userId = session.user.id;
+    
     const { data, error } = await supabase
       .from('mood_entries')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .order('date', { ascending: false });
     
     if (error) {
@@ -183,11 +189,19 @@ export const getAllMoodEntries = async (): Promise<MoodEntry[]> => {
 // Get recent mood entries for the current week (Sunday to Saturday)
 export const getCurrentWeekMoodEntries = async (): Promise<MoodEntry[]> => {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    // Get current user
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError) {
+      console.error('Session error:', sessionError);
+      return [];
+    }
+    
+    if (!session || !session.user) {
       console.error('No authenticated user found');
       return [];
     }
+    
+    const userId = session.user.id;
     
     // Get current date
     const now = new Date();
@@ -210,7 +224,7 @@ export const getCurrentWeekMoodEntries = async (): Promise<MoodEntry[]> => {
     const { data, error } = await supabase
       .from('mood_entries')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .gte('date', startDate)
       .lte('date', endDate)
       .order('date', { ascending: true });
@@ -230,11 +244,19 @@ export const getCurrentWeekMoodEntries = async (): Promise<MoodEntry[]> => {
 // Get recent mood entries
 export const getRecentMoodEntries = async (days: number = 7): Promise<MoodEntry[]> => {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    // Get current user
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError) {
+      console.error('Session error:', sessionError);
+      return [];
+    }
+    
+    if (!session || !session.user) {
       console.error('No authenticated user found');
       return [];
     }
+    
+    const userId = session.user.id;
     
     const endDate = getTodayDate();
     const startDate = formatDate(new Date(Date.now() - (days * 24 * 60 * 60 * 1000)));
@@ -242,7 +264,7 @@ export const getRecentMoodEntries = async (days: number = 7): Promise<MoodEntry[
     const { data, error } = await supabase
       .from('mood_entries')
       .select('*')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .gte('date', startDate)
       .lte('date', endDate)
       .order('date', { ascending: true });
@@ -293,12 +315,6 @@ export const getAverageMood = async (days: number = 7): Promise<number | null> =
 export const getMoodStreak = async (): Promise<number> => {
   try {
     console.log('Calculating mood streak...');
-    
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      console.error('No authenticated user found');
-      return 0;
-    }
     
     // Get all mood entries
     const entries = await getAllMoodEntries();
