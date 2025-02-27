@@ -78,13 +78,19 @@ export default function MoodSlider({
     loadTodayMood();
   }, []);
   
-  // Handle slider value change
-  const handleValueChange = async (sliderValue: number) => {
+  // Handle slider value change (while sliding)
+  const handleSliderChange = (sliderValue: number) => {
     // Convert to integer between 1-5
     const moodRating = Math.round(sliderValue) as MoodRating;
     
-    // Update local state
+    // Update local state and parent component
     onValueChange(moodRating);
+  };
+  
+  // Handle slider value change (when sliding completes)
+  const handleSlidingComplete = async (sliderValue: number) => {
+    // Convert to integer between 1-5
+    const moodRating = Math.round(sliderValue) as MoodRating;
     
     // Save to database
     try {
@@ -112,8 +118,8 @@ export default function MoodSlider({
         maximumValue={5}
         step={1}
         value={value}
-        onValueChange={(val) => onValueChange(Math.round(val) as MoodRating)}
-        onSlidingComplete={handleValueChange}
+        onValueChange={handleSliderChange}
+        onSlidingComplete={handleSlidingComplete}
         minimumTrackTintColor={currentMood.color}
         maximumTrackTintColor={theme.colors.border}
         thumbTintColor={currentMood.color}
