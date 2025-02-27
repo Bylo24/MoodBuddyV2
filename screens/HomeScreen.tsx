@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, ScrollView } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, Dimensions, SafeAreaView } from 'react-native';
 import { theme } from '../theme/theme';
 import MoodSlider from '../components/MoodSlider';
 import ActivityCard from '../components/ActivityCard';
@@ -7,6 +7,9 @@ import MoodTrendGraph from '../components/MoodTrendGraph';
 import DailyAffirmation from '../components/DailyAffirmation';
 import { recentMoodEntries, recommendedActivities } from '../data/mockData';
 import { MoodRating } from '../types';
+
+// Get screen dimensions
+const { width: screenWidth } = Dimensions.get('window');
 
 export default function HomeScreen() {
   // State for selected mood (just for UI demonstration)
@@ -28,82 +31,81 @@ export default function HomeScreen() {
   const userName = "Alex";
   
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
-      <View style={styles.header}>
-        <Text style={styles.greeting}>Hey {userName}, let's make today great! 😊</Text>
-        <Text style={styles.date}>{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</Text>
-      </View>
-      
-      <DailyAffirmation quote={dailyAffirmation.quote} author={dailyAffirmation.author} />
-      
-      <View style={styles.moodCheckInContainer}>
-        <Text style={styles.sectionTitle}>How are you feeling today?</Text>
-        <MoodSlider value={selectedMood} onValueChange={setSelectedMood} />
-      </View>
-      
-      <View style={styles.moodSummaryContainer}>
-        <Text style={styles.sectionTitle}>Your Mood Summary</Text>
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView 
+        style={styles.container} 
+        contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.header}>
+          <Text style={styles.greeting}>Hey {userName},</Text>
+          <Text style={styles.subGreeting}>let's make today great! 😊</Text>
+          <Text style={styles.date}>{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</Text>
+        </View>
         
-        <View style={styles.summaryCard}>
-          <View style={styles.summaryRow}>
-            <View style={styles.summaryItem}>
-              <Text style={styles.summaryLabel}>Today</Text>
-              <Text style={[
-                styles.summaryValue,
-                { color: getMoodColor(latestMood.rating) }
-              ]}>
-                {latestMood ? getMoodEmoji(latestMood.rating) : '–'}
-              </Text>
-            </View>
-            
-            <View style={styles.divider} />
-            
-            <View style={styles.summaryItem}>
-              <Text style={styles.summaryLabel}>Weekly Average</Text>
-              <Text style={[
-                styles.summaryValue,
-                { color: getMoodColor(Math.round(averageMood)) }
-              ]}>
-                {averageMood ? getMoodEmoji(Math.round(averageMood) as 1|2|3|4|5) : '–'}
-              </Text>
-            </View>
-            
-            <View style={styles.divider} />
-            
-            <View style={styles.summaryItem}>
-              <Text style={styles.summaryLabel}>Streak</Text>
-              <Text style={[styles.summaryValue, styles.streakValue]}>5 days</Text>
-            </View>
-          </View>
+        <DailyAffirmation quote={dailyAffirmation.quote} author={dailyAffirmation.author} />
+        
+        <View style={styles.moodCheckInContainer}>
+          <Text style={styles.sectionTitle}>How are you feeling today?</Text>
+          <MoodSlider value={selectedMood} onValueChange={setSelectedMood} />
+        </View>
+        
+        <View style={styles.moodSummaryContainer}>
+          <Text style={styles.sectionTitle}>Your Mood Summary</Text>
           
-          <View style={styles.trendContainer}>
-            <Text style={styles.trendTitle}>Your Mood Trend</Text>
-            <MoodTrendGraph moodEntries={recentMoodEntries} />
+          <View style={styles.summaryCard}>
+            <View style={styles.summaryRow}>
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryLabel}>Today</Text>
+                <Text style={[
+                  styles.summaryValue,
+                  { color: getMoodColor(latestMood.rating) }
+                ]}>
+                  {latestMood ? getMoodEmoji(latestMood.rating) : '–'}
+                </Text>
+              </View>
+              
+              <View style={styles.divider} />
+              
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryLabel}>Weekly Avg</Text>
+                <Text style={[
+                  styles.summaryValue,
+                  { color: getMoodColor(Math.round(averageMood)) }
+                ]}>
+                  {averageMood ? getMoodEmoji(Math.round(averageMood) as 1|2|3|4|5) : '–'}
+                </Text>
+              </View>
+              
+              <View style={styles.divider} />
+              
+              <View style={styles.summaryItem}>
+                <Text style={styles.summaryLabel}>Streak</Text>
+                <Text style={[styles.summaryValue, styles.streakValue]}>5 days</Text>
+              </View>
+            </View>
+            
+            <View style={styles.trendContainer}>
+              <Text style={styles.trendTitle}>Your Mood Trend</Text>
+              <MoodTrendGraph moodEntries={recentMoodEntries} />
+            </View>
           </View>
         </View>
-      </View>
-      
-      <View style={styles.activitiesContainer}>
-        <Text style={styles.sectionTitle}>Recommended Activities</Text>
-        <Text style={styles.sectionSubtitle}>Based on your recent mood patterns</Text>
         
-        <View style={styles.activitiesGrid}>
-          {recommendedActivities.slice(0, 2).map(activity => (
+        <View style={styles.activitiesContainer}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitle}>Recommended Activities</Text>
+          </View>
+          <Text style={styles.sectionSubtitle}>Based on your recent mood patterns</Text>
+          
+          {recommendedActivities.map(activity => (
             <View key={activity.id} style={styles.activityItem}>
               <ActivityCard activity={activity} />
             </View>
           ))}
         </View>
-        
-        <View style={styles.activitiesGrid}>
-          {recommendedActivities.slice(2, 4).map(activity => (
-            <View key={activity.id} style={styles.activityItem}>
-              <ActivityCard activity={activity} />
-            </View>
-          ))}
-        </View>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -130,71 +132,83 @@ function getMoodColor(rating: number): string {
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: theme.colors.background,
+  },
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
   },
   contentContainer: {
-    padding: theme.spacing.lg,
-    paddingBottom: theme.spacing.xxl,
+    paddingHorizontal: screenWidth * 0.05, // 5% of screen width for horizontal padding
+    paddingTop: 16,
+    paddingBottom: 32,
   },
   header: {
-    marginBottom: theme.spacing.md,
+    marginBottom: 16,
   },
   greeting: {
-    fontSize: theme.fontSizes.xxl,
+    fontSize: 28,
     fontWeight: theme.fontWeights.bold,
     color: theme.colors.text,
-    lineHeight: theme.lineHeights.tight * theme.fontSizes.xxl,
+  },
+  subGreeting: {
+    fontSize: 22,
+    fontWeight: theme.fontWeights.semibold,
+    color: theme.colors.text,
+    marginBottom: 4,
   },
   date: {
-    fontSize: theme.fontSizes.md,
+    fontSize: 16,
     color: theme.colors.subtext,
-    marginTop: theme.spacing.xs,
+    marginTop: 4,
   },
   moodCheckInContainer: {
-    marginBottom: theme.spacing.xl,
+    marginBottom: 24,
   },
   sectionTitle: {
-    fontSize: theme.fontSizes.xl,
+    fontSize: 20,
     fontWeight: theme.fontWeights.bold,
     color: theme.colors.text,
-    marginBottom: theme.spacing.md,
-    lineHeight: theme.lineHeights.tight * theme.fontSizes.xl,
+    marginBottom: 12,
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   sectionSubtitle: {
-    fontSize: theme.fontSizes.md,
+    fontSize: 14,
     color: theme.colors.subtext,
-    marginTop: -theme.spacing.sm,
-    marginBottom: theme.spacing.md,
-    lineHeight: theme.lineHeights.normal * theme.fontSizes.md,
+    marginTop: -8,
+    marginBottom: 16,
   },
   moodSummaryContainer: {
-    marginBottom: theme.spacing.xl,
+    marginBottom: 24,
   },
   summaryCard: {
     backgroundColor: theme.colors.card,
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.lg,
+    borderRadius: 16,
+    padding: 16,
     ...theme.shadows.medium,
   },
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: theme.spacing.lg,
+    marginBottom: 16,
   },
   summaryItem: {
     alignItems: 'center',
     flex: 1,
   },
   summaryLabel: {
-    fontSize: theme.fontSizes.sm,
+    fontSize: 14,
     color: theme.colors.subtext,
-    marginBottom: theme.spacing.sm,
-    lineHeight: theme.lineHeights.normal * theme.fontSizes.sm,
+    marginBottom: 8,
   },
   summaryValue: {
-    fontSize: theme.fontSizes.xxl,
+    fontSize: 28,
     fontWeight: theme.fontWeights.bold,
   },
   streakValue: {
@@ -203,29 +217,24 @@ const styles = StyleSheet.create({
   divider: {
     width: 1,
     backgroundColor: theme.colors.border,
-    marginHorizontal: theme.spacing.md,
+    marginHorizontal: 8,
   },
   trendContainer: {
-    marginTop: theme.spacing.md,
+    marginTop: 16,
     borderTopWidth: 1,
     borderTopColor: theme.colors.border,
-    paddingTop: theme.spacing.md,
+    paddingTop: 16,
   },
   trendTitle: {
-    fontSize: theme.fontSizes.md,
+    fontSize: 16,
     fontWeight: theme.fontWeights.semibold,
     color: theme.colors.text,
-    marginBottom: theme.spacing.sm,
+    marginBottom: 8,
   },
   activitiesContainer: {
-    marginBottom: theme.spacing.xl,
-  },
-  activitiesGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: theme.spacing.md,
+    marginBottom: 16,
   },
   activityItem: {
-    width: '48%',
+    marginBottom: 12,
   },
 });

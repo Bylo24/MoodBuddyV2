@@ -1,7 +1,10 @@
 import React from 'react';
-import { StyleSheet, Text, View, Pressable } from 'react-native';
+import { StyleSheet, Text, View, Pressable, Dimensions } from 'react-native';
 import { Activity } from '../types';
 import { theme } from '../theme/theme';
+
+// Get screen dimensions
+const { width: screenWidth } = Dimensions.get('window');
 
 interface ActivityCardProps {
   activity: Activity;
@@ -22,14 +25,20 @@ export default function ActivityCard({ activity, onPress }: ActivityCardProps) {
   };
 
   return (
-    <Pressable style={styles.container} onPress={onPress}>
+    <Pressable 
+      style={({ pressed }) => [
+        styles.container,
+        pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }
+      ]} 
+      onPress={onPress}
+    >
       <View style={styles.iconContainer}>
         <Text style={styles.icon}>{getCategoryIcon(activity.category)}</Text>
       </View>
       
       <View style={styles.content}>
         <View style={styles.header}>
-          <Text style={styles.title}>{activity.title}</Text>
+          <Text style={styles.title} numberOfLines={1}>{activity.title}</Text>
           <View style={styles.durationContainer}>
             <Text style={styles.duration}>{activity.duration} min</Text>
           </View>
@@ -103,69 +112,69 @@ function getImpactStyle(impact: Activity['moodImpact']) {
 const styles = StyleSheet.create({
   container: {
     backgroundColor: theme.colors.card,
-    borderRadius: theme.borderRadius.lg,
-    marginVertical: theme.spacing.sm,
+    borderRadius: 16,
     ...theme.shadows.medium,
     overflow: 'hidden',
     flexDirection: 'row',
+    width: '100%',
   },
   iconContainer: {
-    width: 60,
+    width: 50,
     backgroundColor: theme.colors.primary + '20', // 20% opacity
     alignItems: 'center',
     justifyContent: 'center',
-    padding: theme.spacing.sm,
+    padding: 8,
   },
   icon: {
-    fontSize: 28,
+    fontSize: 24,
   },
   content: {
     flex: 1,
-    padding: theme.spacing.md,
+    padding: 12,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: theme.spacing.sm,
+    marginBottom: 6,
   },
   title: {
-    fontSize: theme.fontSizes.lg,
+    fontSize: 16,
     fontWeight: theme.fontWeights.bold,
     color: theme.colors.text,
     flex: 1,
-    lineHeight: theme.lineHeights.tight * theme.fontSizes.lg,
+    marginRight: 8,
   },
   durationContainer: {
     backgroundColor: theme.colors.primary,
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
-    borderRadius: theme.borderRadius.md,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
   duration: {
     color: 'white',
-    fontSize: theme.fontSizes.xs,
+    fontSize: 12,
     fontWeight: theme.fontWeights.medium,
   },
   description: {
-    fontSize: theme.fontSizes.md,
+    fontSize: 14,
     color: theme.colors.subtext,
-    marginBottom: theme.spacing.md,
-    lineHeight: theme.lineHeights.normal * theme.fontSizes.md,
+    marginBottom: 8,
+    lineHeight: 18,
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: theme.spacing.sm,
+    marginBottom: 6,
   },
   categoryBadge: {
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xs,
-    borderRadius: theme.borderRadius.sm,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
   },
   categoryText: {
-    fontSize: theme.fontSizes.xs,
+    fontSize: 12,
     fontWeight: theme.fontWeights.medium,
   },
   impactContainer: {
@@ -173,29 +182,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   impactLabel: {
-    fontSize: theme.fontSizes.sm,
+    fontSize: 12,
     color: theme.colors.subtext,
   },
   impactValue: {
-    fontSize: theme.fontSizes.sm,
+    fontSize: 12,
     fontWeight: theme.fontWeights.semibold,
   },
   progressContainer: {
-    marginTop: theme.spacing.xs,
+    marginTop: 4,
   },
   progressBar: {
-    height: 4,
+    height: 3,
     backgroundColor: theme.colors.border,
-    borderRadius: theme.borderRadius.round,
+    borderRadius: 999,
     overflow: 'hidden',
-    marginBottom: theme.spacing.xs,
+    marginBottom: 4,
   },
   progressFill: {
     height: '100%',
     backgroundColor: theme.colors.accent,
   },
   progressText: {
-    fontSize: theme.fontSizes.xs,
+    fontSize: 10,
     color: theme.colors.subtext,
     fontStyle: 'italic',
   },

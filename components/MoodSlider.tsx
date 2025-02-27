@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, Animated } from 'react-native';
+import { StyleSheet, Text, View, Animated, Dimensions } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { MoodRating } from '../types';
 import { theme } from '../theme/theme';
+
+// Get screen dimensions
+const { width: screenWidth } = Dimensions.get('window');
 
 interface MoodSliderProps {
   value: MoodRating;
@@ -67,6 +70,8 @@ export default function MoodSlider({ value, onValueChange }: MoodSliderProps) {
         minimumTrackTintColor={currentMood.color}
         maximumTrackTintColor={theme.colors.border}
         thumbTintColor={currentMood.color}
+        trackHeight={8}
+        thumbSize={24}
       />
       
       <View style={styles.labelContainer}>
@@ -102,7 +107,8 @@ export default function MoodSlider({ value, onValueChange }: MoodSliderProps) {
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: theme.spacing.lg,
+    marginVertical: 16,
+    width: '100%',
   },
   slider: {
     width: '100%',
@@ -111,23 +117,24 @@ const styles = StyleSheet.create({
   labelContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingHorizontal: theme.spacing.xs,
-    marginBottom: theme.spacing.md,
+    paddingHorizontal: 10,
+    marginBottom: 16,
   },
   sliderLabel: {
-    fontSize: theme.fontSizes.sm,
+    fontSize: 14,
     color: theme.colors.subtext,
+    fontWeight: theme.fontWeights.medium,
   },
   moodDisplay: {
     alignItems: 'center',
-    marginTop: theme.spacing.md,
+    marginTop: 8,
   },
   emoji: {
-    fontSize: 64,
-    marginBottom: theme.spacing.sm,
+    fontSize: 56,
+    marginBottom: 8,
   },
   moodLabel: {
-    fontSize: theme.fontSizes.xl,
+    fontSize: 20,
     fontWeight: theme.fontWeights.bold,
   },
 });

@@ -20,31 +20,31 @@ export default function DailyAffirmation({ quote, author }: DailyAffirmationProp
 const styles = StyleSheet.create({
   container: {
     backgroundColor: theme.colors.primary + '15', // 15% opacity
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.lg,
-    marginBottom: theme.spacing.lg,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 24,
     borderLeftWidth: 4,
     borderLeftColor: theme.colors.primary,
   },
   quoteIcon: {
-    fontSize: 40,
+    fontSize: 32,
     color: theme.colors.primary,
     position: 'absolute',
-    top: 0,
+    top: 4,
     left: 10,
     opacity: 0.2,
   },
   quote: {
-    fontSize: theme.fontSizes.md,
+    fontSize: 15,
     fontWeight: theme.fontWeights.medium,
     color: theme.colors.text,
     fontStyle: 'italic',
-    lineHeight: theme.lineHeights.relaxed * theme.fontSizes.md,
+    lineHeight: 22,
   },
   author: {
-    fontSize: theme.fontSizes.sm,
+    fontSize: 13,
     color: theme.colors.subtext,
-    marginTop: theme.spacing.sm,
+    marginTop: 8,
     textAlign: 'right',
   },
 });

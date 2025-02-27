@@ -1,7 +1,10 @@
 import React from 'react';
-import { StyleSheet, View, Text } from 'react-native';
+import { StyleSheet, View, Text, Dimensions } from 'react-native';
 import { MoodEntry } from '../types';
 import { theme } from '../theme/theme';
+
+// Get screen dimensions
+const { width: screenWidth } = Dimensions.get('window');
 
 interface MoodTrendGraphProps {
   moodEntries: MoodEntry[];
@@ -69,40 +72,40 @@ export default function MoodTrendGraph({
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: theme.spacing.md,
-    marginBottom: theme.spacing.md,
+    marginTop: 8,
+    marginBottom: 8,
   },
   graphContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
-    height: 100,
-    paddingVertical: theme.spacing.md,
+    height: 80,
+    paddingVertical: 8,
   },
   dayColumn: {
     alignItems: 'center',
     flex: 1,
   },
   barContainer: {
-    height: 80,
-    width: 20,
+    height: 60,
+    width: 16,
     backgroundColor: theme.colors.border,
-    borderRadius: theme.borderRadius.md,
+    borderRadius: 8,
     justifyContent: 'flex-end',
     overflow: 'hidden',
   },
   bar: {
     width: '100%',
-    borderRadius: theme.borderRadius.md,
+    borderRadius: 8,
   },
   dayLabel: {
-    marginTop: theme.spacing.xs,
-    fontSize: theme.fontSizes.xs,
+    marginTop: 4,
+    fontSize: 12,
     color: theme.colors.subtext,
   },
   motivationalText: {
-    marginTop: theme.spacing.md,
-    fontSize: theme.fontSizes.md,
+    marginTop: 8,
+    fontSize: 14,
     fontWeight: theme.fontWeights.semibold,
     color: theme.colors.success,
     textAlign: 'center',
