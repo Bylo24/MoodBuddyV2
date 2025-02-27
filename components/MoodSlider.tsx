@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, Animated, Dimensions, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View, Animated, Dimensions } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { MoodRating } from '../types';
 import { theme } from '../theme/theme';
-import { saveMoodEntry } from '../services/moodService';
-import { getCurrentUser } from '../services/authService';
 
 // Get screen dimensions
 const { width: screenWidth } = Dimensions.get('window');
@@ -12,8 +10,6 @@ const { width: screenWidth } = Dimensions.get('window');
 interface MoodSliderProps {
   value: MoodRating;
   onValueChange: (value: MoodRating) => void;
-  initialValue?: MoodRating;
-  isEditable?: boolean;
 }
 
 interface MoodOption {
@@ -23,16 +19,9 @@ interface MoodOption {
   color: string;
 }
 
-export default function MoodSlider({ 
-  value, 
-  onValueChange,
-  initialValue = 3,
-  isEditable = true
-}: MoodSliderProps) {
+export default function MoodSlider({ value, onValueChange }: MoodSliderProps) {
   // Animation value for emoji scaling
   const [scaleAnim] = useState(new Animated.Value(1));
-  const [saving, setSaving] = useState(false);
-  const [savedValue, setSavedValue] = useState<MoodRating | null>(null);
   
   // Define mood options
   const moodOptions: MoodOption[] = [
@@ -69,30 +58,6 @@ export default function MoodSlider({
     onValueChange(moodRating);
   };
   
-  // Save the current mood to the database
-  const saveMood = async () => {
-    try {
-      setSaving(true);
-      const user = await getCurrentUser();
-      
-      if (!user) {
-        console.error('No user logged in');
-        return;
-      }
-      
-      const result = await saveMoodEntry(user.id, value);
-      
-      if (result) {
-        setSavedValue(value);
-        console.log('Mood saved successfully');
-      }
-    } catch (error) {
-      console.error('Error saving mood:', error);
-    } finally {
-      setSaving(false);
-    }
-  };
-  
   return (
     <View style={styles.container}>
       <Slider
@@ -105,7 +70,6 @@ export default function MoodSlider({
         minimumTrackTintColor={currentMood.color}
         maximumTrackTintColor={theme.colors.border}
         thumbTintColor={currentMood.color}
-        disabled={!isEditable}
       />
       
       <View style={styles.labelContainer}>
@@ -135,22 +99,6 @@ export default function MoodSlider({
           {currentMood.label}
         </Text>
       </View>
-      
-      {isEditable && (
-        <TouchableOpacity 
-          style={[
-            styles.saveButton, 
-            saving && styles.savingButton,
-            savedValue === value && styles.savedButton
-          ]} 
-          onPress={saveMood}
-          disabled={saving || savedValue === value}
-        >
-          <Text style={styles.saveButtonText}>
-            {saving ? 'Saving...' : savedValue === value ? 'Saved' : 'Save Mood'}
-          </Text>
-        </TouchableOpacity>
-      )}
     </View>
   );
 }
@@ -182,7 +130,6 @@ const styles = StyleSheet.create({
   moodDisplay: {
     alignItems: 'center',
     marginTop: 8,
-    marginBottom: 16,
   },
   emoji: {
     fontSize: 56,
@@ -191,23 +138,5 @@ const styles = StyleSheet.create({
   moodLabel: {
     fontSize: 20,
     fontWeight: theme.fontWeights.bold,
-  },
-  saveButton: {
-    backgroundColor: theme.colors.primary,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  savingButton: {
-    backgroundColor: theme.colors.primary + '80', // 50% opacity
-  },
-  savedButton: {
-    backgroundColor: theme.colors.success,
-  },
-  saveButtonText: {
-    color: 'white',
-    fontWeight: theme.fontWeights.semibold,
-    fontSize: 16,
   },
 });
