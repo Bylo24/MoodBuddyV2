@@ -40,8 +40,8 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
   };
   
   const validatePassword = (password: string): boolean => {
-    // At least 8 characters
-    return password.length >= 8;
+    // At least 6 characters
+    return password.length >= 6;
   };
   
   const handleAuth = async () => {
@@ -65,7 +65,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
     }
     
     if (isSignUp && !validatePassword(password)) {
-      setErrorMessage('Password must be at least 8 characters long');
+      setErrorMessage('Password must be at least 6 characters long');
       return;
     }
     
@@ -82,11 +82,15 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
           console.log('Sign up successful with session, proceeding to app');
           onLogin();
         } else {
-          // Show confirmation message
+          // Show confirmation message and switch to login
           Alert.alert(
             'Account Created',
-            'Your account has been created. You can now log in.',
-            [{ text: 'OK', onPress: () => setIsSignUp(false) }]
+            'Your account has been created. Please log in.',
+            [{ text: 'OK', onPress: () => {
+              setIsSignUp(false);
+              // Keep the email but clear the password
+              setPassword('');
+            }}]
           );
         }
       } else {
@@ -219,7 +223,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
           
           {isSignUp && (
             <Text style={styles.passwordHint}>
-              Password must be at least 8 characters long
+              Password must be at least 6 characters long
             </Text>
           )}
           

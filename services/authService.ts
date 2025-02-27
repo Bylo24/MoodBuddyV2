@@ -51,35 +51,63 @@ export const signInWithEmail = async (email: string, password: string) => {
 export const signUpWithEmail = async (email: string, password: string) => {
   console.log('Attempting to sign up with email:', email);
   try {
-    // For testing purposes, we'll use signUp without email confirmation
-    const { data, error } = await supabase.auth.signUp({
+    // First, try to sign up
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        // Skip email verification for now
-        emailRedirectTo: undefined,
+        // Skip email verification
+        emailRedirectTo: null,
         data: {
           name: email.split('@')[0], // Use part of email as name
         }
       },
     });
     
-    if (error) {
-      console.error('Sign up error:', error.message);
-      throw error;
+    if (signUpError) {
+      console.error('Sign up error:', signUpError.message);
+      throw signUpError;
     }
     
-    // Check if user was created and session exists
-    if (data.user && data.session) {
-      console.log('Sign up successful with immediate session:', data.user.id);
-      return data;
-    } else if (data.user) {
-      console.log('Sign up successful, email confirmation required:', data.user.id);
-      // For testing, we'll try to sign in immediately
-      return await signInWithEmail(email, password);
-    } else {
-      throw new Error('Failed to create user account');
+    console.log('Sign up response:', signUpData);
+    
+    // If we have a session, login was successful
+    if (signUpData.session) {
+      console.log('Sign up successful with immediate session:', signUpData.user?.id);
+      return signUpData;
     }
+    
+    // If no session but user was created, try to sign in immediately
+    if (signUpData.user) {
+      console.log('User created, attempting immediate sign in');
+      
+      // Wait a moment for the account to be fully created
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Try to sign in
+      try {
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        
+        if (signInError) {
+          console.error('Immediate sign in error:', signInError.message);
+          // Return the sign up data anyway
+          return signUpData;
+        }
+        
+        console.log('Immediate sign in successful');
+        return signInData;
+      } catch (signInErr) {
+        console.error('Error during immediate sign in:', signInErr);
+        // Return the sign up data anyway
+        return signUpData;
+      }
+    }
+    
+    // If we get here, something unexpected happened
+    throw new Error('Failed to create user account');
   } catch (error: any) {
     console.error('Error signing up:', error.message || error);
     throw error;
