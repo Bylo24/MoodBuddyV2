@@ -21,12 +21,6 @@ export default function HomeScreen() {
   // Calculate average mood for the last 5 entries
   const averageMood = recentMoodEntries.reduce((sum, entry) => sum + entry.rating, 0) / recentMoodEntries.length;
   
-  // Daily affirmation
-  const dailyAffirmation = {
-    quote: "Your mental health is a priority. Your happiness is essential. Your self-care is a necessity.",
-    author: "Unknown"
-  };
-  
   // User name (would come from user profile in a real app)
   const userName = "Alex";
   
@@ -44,7 +38,7 @@ export default function HomeScreen() {
           <Text style={styles.date}>{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</Text>
         </View>
         
-        <DailyAffirmation quote={dailyAffirmation.quote} author={dailyAffirmation.author} />
+        <DailyAffirmation />
         
         <View style={styles.moodCheckInContainer}>
           <Text style={styles.sectionTitle}>How are you feeling today?</Text>
