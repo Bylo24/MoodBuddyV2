@@ -5,12 +5,14 @@ import { theme } from './theme/theme';
 import HomeScreen from './screens/HomeScreen';
 import LoginScreen from './screens/LoginScreen';
 import SetupNameScreen from './screens/SetupNameScreen';
+import IntroductionScreen from './screens/IntroductionScreen';
+import TipsScreen from './screens/TipsScreen';
 import { isAuthenticated, signOut, getCurrentUser } from './services/authService';
 import { supabase } from './utils/supabaseClient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Define app states
-type AppState = 'loading' | 'login' | 'onboarding' | 'home';
+type AppState = 'loading' | 'login' | 'onboarding-name' | 'onboarding-intro' | 'onboarding-tips' | 'home';
 
 export default function App() {
   const [appState, setAppState] = useState<AppState>('loading');
@@ -65,27 +67,48 @@ export default function App() {
   // Check if user has completed onboarding
   const checkOnboardingStatus = async () => {
     try {
-      // Check if user has a name set
-      const storedName = await AsyncStorage.getItem('user_display_name');
+      // Check if user has completed onboarding
+      const onboardingCompleted = await AsyncStorage.getItem('onboarding_completed');
       
-      if (storedName) {
+      if (onboardingCompleted === 'true') {
         console.log('User has completed onboarding, proceeding to home');
-        setUserName(storedName);
+        // Get user name
+        const storedName = await AsyncStorage.getItem('user_display_name');
+        if (storedName) {
+          setUserName(storedName);
+        } else {
+          // Fall back to email-based name
+          const user = await getCurrentUser();
+          if (user?.email) {
+            const emailName = user.email.split('@')[0];
+            setUserName(emailName);
+            // Save this name for future use
+            await AsyncStorage.setItem('user_display_name', emailName);
+          }
+        }
         setAppState('home');
       } else {
-        // Get user email to extract name if available
-        const user = await getCurrentUser();
-        if (user?.email) {
-          const emailName = user.email.split('@')[0];
-          setUserName(emailName);
-        }
+        // Check if user has a name set but hasn't completed full onboarding
+        const storedName = await AsyncStorage.getItem('user_display_name');
         
-        console.log('User needs to complete onboarding');
-        setAppState('onboarding');
+        if (storedName) {
+          setUserName(storedName);
+          setAppState('onboarding-intro');
+        } else {
+          // Get user email to extract name if available
+          const user = await getCurrentUser();
+          if (user?.email) {
+            const emailName = user.email.split('@')[0];
+            setUserName(emailName);
+          }
+          
+          console.log('User needs to complete onboarding');
+          setAppState('onboarding-name');
+        }
       }
     } catch (error) {
       console.error('Error checking onboarding status:', error);
-      setAppState('onboarding');
+      setAppState('onboarding-name');
     }
   };
   
@@ -95,23 +118,23 @@ export default function App() {
     checkOnboardingStatus();
   };
   
-  // Handle onboarding completion
-  const handleOnboardingComplete = async (name: string) => {
-    console.log('Onboarding complete with name:', name);
+  // Handle name setup completion
+  const handleNameComplete = async (name: string) => {
+    console.log('Name setup complete with name:', name);
     try {
       await AsyncStorage.setItem('user_display_name', name);
       setUserName(name);
-      setAppState('home');
+      setAppState('onboarding-intro');
     } catch (error) {
       console.error('Error saving user name:', error);
       // Proceed anyway
-      setAppState('home');
+      setAppState('onboarding-intro');
     }
   };
   
-  // Handle onboarding skip
-  const handleOnboardingSkip = async () => {
-    console.log('Onboarding skipped');
+  // Handle name setup skip
+  const handleNameSkip = async () => {
+    console.log('Name setup skipped');
     // If we have a username from email, use that
     if (userName) {
       try {
@@ -120,7 +143,26 @@ export default function App() {
         console.error('Error saving default user name:', error);
       }
     }
-    setAppState('home');
+    setAppState('onboarding-intro');
+  };
+  
+  // Handle introduction completion
+  const handleIntroComplete = () => {
+    console.log('Introduction complete');
+    setAppState('onboarding-tips');
+  };
+  
+  // Handle tips completion
+  const handleTipsComplete = async () => {
+    console.log('Tips complete, onboarding finished');
+    try {
+      await AsyncStorage.setItem('onboarding_completed', 'true');
+      setAppState('home');
+    } catch (error) {
+      console.error('Error saving onboarding status:', error);
+      // Proceed anyway
+      setAppState('home');
+    }
   };
   
   // Handle logout
@@ -152,10 +194,23 @@ export default function App() {
         <LoginScreen onLogin={handleLogin} />
       )}
       
-      {appState === 'onboarding' && (
+      {appState === 'onboarding-name' && (
         <SetupNameScreen 
-          onComplete={handleOnboardingComplete}
-          onSkip={handleOnboardingSkip}
+          onComplete={handleNameComplete}
+          onSkip={handleNameSkip}
+        />
+      )}
+      
+      {appState === 'onboarding-intro' && (
+        <IntroductionScreen 
+          onComplete={handleIntroComplete}
+          userName={userName}
+        />
+      )}
+      
+      {appState === 'onboarding-tips' && (
+        <TipsScreen 
+          onComplete={handleTipsComplete}
         />
       )}
       
