@@ -5,6 +5,8 @@ import MoodSlider from '../components/MoodSlider';
 import ActivityCard from '../components/ActivityCard';
 import MoodTrendGraph from '../components/MoodTrendGraph';
 import QuoteComponent from '../components/QuoteComponent';
+import Header from '../components/Header';
+import ProfileModal from '../components/ProfileModal';
 import { MoodRating } from '../types';
 import { getTodayMoodEntry, getRecentMoodEntries, getMoodStreak, getAverageMood } from '../services/moodService';
 import { getCurrentUser, isAuthenticated } from '../services/authService';
@@ -22,6 +24,9 @@ export default function HomeScreen() {
   const [averageMood, setAverageMood] = useState<number | null>(null);
   const [todayMood, setTodayMood] = useState<MoodRating | null>(null);
   const [isSliderDisabled, setIsSliderDisabled] = useState(false);
+  
+  // State for profile modal
+  const [profileModalVisible, setProfileModalVisible] = useState(false);
   
   // State to force quote refresh
   const [quoteKey, setQuoteKey] = useState(Date.now());
@@ -116,6 +121,16 @@ export default function HomeScreen() {
     setSelectedMood(mood);
   };
   
+  // Handle profile button press
+  const handleProfilePress = () => {
+    setProfileModalVisible(true);
+  };
+  
+  // Handle profile modal close
+  const handleProfileModalClose = () => {
+    setProfileModalVisible(false);
+  };
+  
   function getMoodEmoji(rating: number | null): string {
     if (rating === null) return '–';
     switch (rating) {
@@ -155,6 +170,9 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor={theme.colors.background} />
+      
+      <Header onProfilePress={handleProfilePress} />
+      
       <ScrollView 
         style={styles.container} 
         contentContainerStyle={styles.contentContainer}
@@ -232,6 +250,11 @@ export default function HomeScreen() {
           ))}
         </View>
       </ScrollView>
+      
+      <ProfileModal 
+        visible={profileModalVisible} 
+        onClose={handleProfileModalClose} 
+      />
     </SafeAreaView>
   );
 }
@@ -247,7 +270,7 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     paddingHorizontal: screenWidth * 0.05, // 5% of screen width for horizontal padding
-    paddingTop: 16,
+    paddingTop: 0, // Reduced because we now have a header
     paddingBottom: 32,
   },
   header: {
