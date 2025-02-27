@@ -68,9 +68,51 @@ export const signInWithEmail = async (email: string, password: string) => {
   });
 };
 
+// Check if a user exists with the given email
+export const checkUserExists = async (email: string): Promise<boolean> => {
+  console.log('Checking if user exists with email:', email);
+  
+  try {
+    // Try to sign up with a random password to see if the user exists
+    const { error } = await supabase.auth.signUp({
+      email,
+      password: Math.random().toString(36).slice(-12), // Random password
+      options: {
+        emailRedirectTo: undefined
+      }
+    });
+    
+    // If we get "User already registered" error, the user exists
+    if (error && (
+      error.message.includes('User already registered') || 
+      error.message.includes('already exists') ||
+      error.message.includes('already taken')
+    )) {
+      console.log('User exists with email:', email);
+      return true;
+    }
+    
+    // If no error or different error, user doesn't exist
+    console.log('User does not exist with email:', email);
+    return false;
+  } catch (error) {
+    console.error('Error checking if user exists:', error);
+    return false;
+  }
+};
+
 // Sign up with email and password
 export const signUpWithEmail = async (email: string, password: string) => {
   console.log('Attempting to sign up with email:', email);
+  
+  // First check if user already exists
+  const userExists = await checkUserExists(email);
+  if (userExists) {
+    console.log('User already exists, throwing error');
+    const error = new Error('User already registered');
+    error.name = 'UserExistsError';
+    throw error;
+  }
   
   return retryOperation(async () => {
     // Create a new account
@@ -85,6 +127,18 @@ export const signUpWithEmail = async (email: string, password: string) => {
     
     if (error) {
       console.error('Sign up error:', error.message);
+      
+      // Check for user already exists errors
+      if (
+        error.message.includes('User already registered') || 
+        error.message.includes('already exists') ||
+        error.message.includes('already taken')
+      ) {
+        const customError = new Error('User already registered');
+        customError.name = 'UserExistsError';
+        throw customError;
+      }
+      
       throw error;
     }
     
@@ -93,7 +147,9 @@ export const signUpWithEmail = async (email: string, password: string) => {
     // Check if email confirmation is required
     if (data.user && !data.session) {
       if (data.user.identities && data.user.identities.length === 0) {
-        throw new Error('User already registered');
+        const customError = new Error('User already registered');
+        customError.name = 'UserExistsError';
+        throw customError;
       }
       
       if (data.user.email_confirmed_at === null) {
@@ -112,17 +168,17 @@ export const signUpWithEmail = async (email: string, password: string) => {
 // Sign out
 export const signOut = async () => {
   console.log('Attempting to sign out');
-  try {
+  
+  return retryOperation(async () => {
     const { error } = await supabase.auth.signOut();
+    
     if (error) {
       console.error('Sign out error:', error.message);
       throw error;
     }
+    
     console.log('Sign out successful');
-  } catch (error: any) {
-    console.error('Error signing out:', error.message || error);
-    throw error;
-  }
+  });
 };
 
 // Reset password

@@ -1,0 +1,115 @@
+const handleAuth = async () => {
+  Keyboard.dismiss();
+  setErrorMessage(null);
+  
+  // Validate inputs
+  if (!email) {
+    setErrorMessage('Please enter your email address');
+    return;
+  }
+  
+  if (!validateEmail(email)) {
+    setErrorMessage('Please enter a valid email address');
+    return;
+  }
+  
+  if (!password) {
+    setErrorMessage('Please enter your password');
+    return;
+  }
+  
+  if (isSignUp && !validatePassword(password)) {
+    setErrorMessage('Password must be at least 6 characters long');
+    return;
+  }
+  
+  setIsLoading(true);
+  
+  try {
+    if (isSignUp) {
+      console.log('Starting sign up process...');
+      try {
+        const result = await signUpWithEmail(email, password);
+        console.log('Sign up result:', result);
+        
+        // If we have a session, login was successful
+        if (result.session) {
+          console.log('Sign up successful with session, proceeding to app');
+          onLogin();
+        } else if (result.user) {
+          // If user was created but email confirmation is required
+          setConfirmMode(true);
+          Alert.alert(
+            'Email Confirmation Required',
+            'Your account has been created. Please check your email for confirmation instructions.',
+            [{ text: 'OK' }]
+          );
+        } else {
+          setErrorMessage('Failed to create account. Please try again.');
+        }
+      } catch (error: any) {
+        console.error('Sign up error:', error);
+        
+        // Handle user already exists error
+        if (error.name === 'UserExistsError' || 
+            (error.message && (
+              error.message.includes('User already registered') || 
+              error.message.includes('already exists') ||
+              error.message.includes('already taken')
+            ))
+        ) {
+          Alert.alert(
+            'Account Already Exists',
+            'An account with this email already exists. Would you like to log in instead?',
+            [
+              {
+                text: 'Cancel',
+                style: 'cancel'
+              },
+              {
+                text: 'Log In',
+                onPress: () => {
+                  setIsSignUp(false);
+                  setErrorMessage(null);
+                }
+              }
+            ]
+          );
+        } else if (error.name === 'EmailConfirmationRequired' || 
+                  (error.message && error.message.includes('Email confirmation required'))) {
+          setConfirmMode(true);
+          setErrorMessage('Please confirm your email address before logging in.');
+        } else if (error.message && error.message.includes('network')) {
+          setErrorMessage('Network error. Please check your connection and try again.');
+        } else {
+          setErrorMessage(error.message || 'Failed to create account. Please try again.');
+        }
+      }
+    } else {
+      console.log('Starting sign in process...');
+      try {
+        await signInWithEmail(email, password);
+        console.log('Sign in successful, proceeding to app');
+        onLogin();
+      } catch (error: any) {
+        console.error('Sign in error:', error);
+        
+        if (error.message && error.message.includes('Invalid login credentials')) {
+          setErrorMessage('Invalid email or password. Please try again.');
+        } else if (error.message && error.message.includes('Email not confirmed')) {
+          setConfirmMode(true);
+          setErrorMessage('Please confirm your email address before logging in.');
+        } else if (error.message && error.message.includes('network')) {
+          setErrorMessage('Network error. Please check your connection and try again.');
+        } else {
+          setErrorMessage(error.message || 'Failed to log in. Please try again.');
+        }
+      }
+    }
+  } catch (error: any) {
+    console.error('Auth error:', error);
+    setErrorMessage(error.message || 'Authentication failed. Please try again.');
+  } finally {
+    setIsLoading(false);
+  }
+};
