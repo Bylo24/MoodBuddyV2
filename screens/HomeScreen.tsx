@@ -8,10 +8,11 @@ import QuoteComponent from '../components/QuoteComponent';
 import Header from '../components/Header';
 import ProfileModal from '../components/ProfileModal';
 import { MoodRating } from '../types';
-import { getTodayMoodEntry, getRecentMoodEntries, getMoodStreak, getWeeklyAverageMood, getCurrentWeekMoodEntries, getTodayDate, formatDate } from '../services/moodService';
+import { getTodayMoodEntry, getRecentMoodEntries, getMoodStreak, getWeeklyAverageMood, getCurrentWeekMoodEntries } from '../services/moodService';
 import { getCurrentUser, isAuthenticated } from '../services/authService';
 import { recommendedActivities } from '../data/mockData';
 import { supabase } from '../utils/supabaseClient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Get screen dimensions
 const { width: screenWidth } = Dimensions.get('window');
@@ -30,7 +31,6 @@ export default function HomeScreen({ onLogout }: HomeScreenProps) {
   const [weeklyMoodEntries, setWeeklyMoodEntries] = useState<any[]>([]);
   const [todayMood, setTodayMood] = useState<MoodRating | null>(null);
   const [isSliderDisabled, setIsSliderDisabled] = useState(false);
-  const [currentDate, setCurrentDate] = useState<string>(getTodayDate());
   
   // State for mood trend graph refresh
   const [trendGraphKey, setTrendGraphKey] = useState(0);
@@ -53,10 +53,10 @@ export default function HomeScreen({ onLogout }: HomeScreenProps) {
         return;
       }
       
-      // Get the current date in YYYY-MM-DD format
-      const today = getTodayDate();
+      // Get today's date in YYYY-MM-DD format
+      const today = new Date().toISOString().split('T')[0];
       
-      // Query mood entry for the current date
+      // Query mood entry for today
       const { data: todayEntry, error: todayError } = await supabase
         .from('mood_entries')
         .select('*')
@@ -78,7 +78,7 @@ export default function HomeScreen({ onLogout }: HomeScreenProps) {
         setSelectedMood(todayEntry.rating);
       }
       
-      // Load streak
+      // Get all mood entries for streak calculation
       const { data: allEntries, error: entriesError } = await supabase
         .from('mood_entries')
         .select('*')
@@ -89,15 +89,41 @@ export default function HomeScreen({ onLogout }: HomeScreenProps) {
         console.error('Error fetching all mood entries:', entriesError);
       } else {
         // Calculate streak
-        const currentStreak = calculateStreak(allEntries);
+        let currentStreak = 0;
+        if (allEntries && allEntries.length > 0) {
+          // Simple streak calculation
+          currentStreak = 1; // Start with 1 for the most recent entry
+          
+          // Create a map of dates with entries
+          const dateMap = new Map();
+          allEntries.forEach(entry => {
+            dateMap.set(entry.date, true);
+          });
+          
+          // Get the most recent entry date
+          const mostRecentDate = new Date(allEntries[0].date);
+          
+          // Check previous days
+          for (let i = 1; i <= 365; i++) { // Check up to a year back
+            const prevDate = new Date(mostRecentDate);
+            prevDate.setDate(prevDate.getDate() - i);
+            const dateStr = prevDate.toISOString().split('T')[0];
+            
+            if (dateMap.has(dateStr)) {
+              currentStreak++;
+            } else {
+              break;
+            }
+          }
+        }
+        
         console.log('Current streak:', currentStreak);
         setStreak(currentStreak);
         
-        // Get weekly entries
-        const now = new Date();
-        const startOfWeek = new Date(now);
-        startOfWeek.setDate(now.getDate() - now.getDay()); // Go back to Sunday
-        const startDate = formatDate(startOfWeek);
+        // Get weekly entries (last 7 days)
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        const startDate = sevenDaysAgo.toISOString().split('T')[0];
         
         const weekEntries = allEntries.filter(entry => 
           entry.date >= startDate && entry.date <= today
@@ -126,59 +152,6 @@ export default function HomeScreen({ onLogout }: HomeScreenProps) {
     }
   }, []);
   
-  // Calculate streak from mood entries
-  const calculateStreak = (entries: any[]): number => {
-    if (!entries || entries.length === 0) return 0;
-    
-    // Sort entries by date (newest first)
-    const sortedEntries = [...entries].sort((a, b) => {
-      return new Date(b.date).getTime() - new Date(a.date).getTime();
-    });
-    
-    // Get today's date
-    const today = getTodayDate();
-    
-    // Get yesterday's date
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = formatDate(yesterday);
-    
-    // Check if the most recent entry is from today or yesterday
-    const mostRecentEntry = sortedEntries[0];
-    const mostRecentDate = mostRecentEntry.date;
-    
-    // If most recent entry is older than yesterday, streak is broken
-    if (mostRecentDate !== today && mostRecentDate !== yesterdayStr) {
-      return 0;
-    }
-    
-    // Start counting streak
-    let streak = 1;
-    let currentDate = new Date(mostRecentDate);
-    
-    // Create a map of dates with entries for faster lookup
-    const dateMap = new Map();
-    for (const entry of entries) {
-      dateMap.set(entry.date, true);
-    }
-    
-    // Loop through previous days to find consecutive entries
-    for (let i = 1; i <= 365; i++) { // Check up to a year back
-      // Move to previous day
-      currentDate.setDate(currentDate.getDate() - 1);
-      const dateStr = formatDate(currentDate);
-      
-      // Check if there's an entry for this date
-      if (dateMap.has(dateStr)) {
-        streak++;
-      } else {
-        break;
-      }
-    }
-    
-    return streak;
-  };
-  
   // Load user data and mood information
   useEffect(() => {
     const loadUserData = async () => {
@@ -193,17 +166,23 @@ export default function HomeScreen({ onLogout }: HomeScreenProps) {
           return;
         }
         
+        // Try to get stored display name first
+        const storedName = await AsyncStorage.getItem('user_display_name');
+        
         const user = await getCurrentUser();
         if (user) {
-          // Extract name from email or use default
-          const name = user.email ? user.email.split('@')[0] : 'Friend';
-          setUserName(name);
+          // Use stored name if available, otherwise extract from email
+          if (storedName) {
+            setUserName(storedName);
+          } else {
+            const name = user.email ? user.email.split('@')[0] : 'Friend';
+            setUserName(name);
+            // Store the name for future use
+            await AsyncStorage.setItem('user_display_name', name);
+          }
           
           // Load mood data
           await refreshMoodData();
-          
-          // Set the current date
-          setCurrentDate(getTodayDate());
         }
       } catch (error) {
         console.error('Error loading user data:', error);
@@ -214,37 +193,11 @@ export default function HomeScreen({ onLogout }: HomeScreenProps) {
     
     loadUserData();
     
-    // Listen for auth state changes
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        console.log('Auth state changed, reloading user data');
-        loadUserData();
-      }
-    });
-    
-    return () => {
-      // Clean up auth listener
-      if (authListener && authListener.subscription) {
-        authListener.subscription.unsubscribe();
-      }
-    };
-  }, [refreshMoodData, onLogout]);
-  
-  // Check for date changes when app comes to foreground
-  useEffect(() => {
+    // Listen for app state changes
     const subscription = AppState.addEventListener('change', nextAppState => {
       if (nextAppState === 'active') {
-        // App has come to the foreground
-        const today = getTodayDate();
-        
-        // Check if the date has changed
-        if (today !== currentDate) {
-          console.log('Date has changed. Updating current date and refreshing data.');
-          setCurrentDate(today);
-          refreshMoodData();
-        }
-        
-        // Refresh quote
+        // App has come to the foreground, refresh data
+        refreshMoodData();
         setQuoteKey(Date.now());
       }
     });
@@ -252,15 +205,15 @@ export default function HomeScreen({ onLogout }: HomeScreenProps) {
     return () => {
       subscription.remove();
     };
-  }, [currentDate, refreshMoodData]);
+  }, [refreshMoodData, onLogout]);
   
   // Handle mood change
   const handleMoodChange = (mood: MoodRating | null) => {
     console.log('Mood changed to:', mood);
     setSelectedMood(mood);
     
-    // Immediately update today's mood in the UI if it's today
-    if (mood !== null && currentDate === getTodayDate()) {
+    // Immediately update today's mood in the UI
+    if (mood !== null) {
       setTodayMood(mood);
     }
   };
@@ -280,6 +233,16 @@ export default function HomeScreen({ onLogout }: HomeScreenProps) {
   // Handle profile modal close
   const handleProfileModalClose = () => {
     setProfileModalVisible(false);
+    
+    // Refresh user name when profile modal is closed (in case it was updated)
+    const refreshUserName = async () => {
+      const storedName = await AsyncStorage.getItem('user_display_name');
+      if (storedName) {
+        setUserName(storedName);
+      }
+    };
+    
+    refreshUserName();
     
     // Refresh data when profile modal is closed (in case settings were changed)
     refreshMoodData();
@@ -347,7 +310,6 @@ export default function HomeScreen({ onLogout }: HomeScreenProps) {
             onValueChange={handleMoodChange}
             onMoodSaved={handleMoodSaved}
             disabled={isSliderDisabled}
-            date={currentDate}
           />
         </View>
         
