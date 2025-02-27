@@ -5,7 +5,8 @@ import {
   View, 
   FlatList, 
   TouchableOpacity,
-  TextInput
+  TextInput,
+  ScrollView
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';

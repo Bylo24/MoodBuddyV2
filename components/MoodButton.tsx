@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Pressable, Text, View } from 'react-native';
+import { StyleSheet, Text, View, Pressable } from 'react-native';
 import Animated, { 
   useSharedValue, 
   useAnimatedStyle, 
@@ -14,8 +14,6 @@ interface MoodButtonProps {
   selected: boolean;
   onSelect: (rating: MoodRating) => void;
 }
-
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 const getMoodEmoji = (rating: MoodRating): string => {
   switch (rating) {
@@ -47,7 +45,8 @@ const MoodButton: React.FC<MoodButtonProps> = ({ rating, selected, onSelect }) =
     return {
       transform: [{ scale: scale.value }],
       opacity: opacity.value,
-      backgroundColor: selected ? withTiming(getMoodColor(rating), { duration: 300 }) : withTiming('white', { duration: 300 }),
+      backgroundColor: selected ? getMoodColor(rating) : 'white',
+      borderColor: selected ? getMoodColor(rating) : '#E0E0E0',
     };
   });
 
@@ -65,20 +64,21 @@ const MoodButton: React.FC<MoodButtonProps> = ({ rating, selected, onSelect }) =
   };
 
   return (
-    <AnimatedPressable
-      style={[styles.button, animatedStyle, SHADOWS.small]}
+    <Pressable
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       onPress={handlePress}
     >
-      <Text style={styles.emoji}>{getMoodEmoji(rating)}</Text>
-      <Text style={[styles.label, selected && styles.selectedLabel]}>
-        {rating === 1 ? 'Very Sad' : 
-         rating === 2 ? 'Sad' : 
-         rating === 3 ? 'Neutral' : 
-         rating === 4 ? 'Happy' : 'Very Happy'}
-      </Text>
-    </AnimatedPressable>
+      <Animated.View style={[styles.button, animatedStyle, SHADOWS.small]}>
+        <Text style={styles.emoji}>{getMoodEmoji(rating)}</Text>
+        <Text style={[styles.label, selected && styles.selectedLabel]}>
+          {rating === 1 ? 'Very Sad' : 
+           rating === 2 ? 'Sad' : 
+           rating === 3 ? 'Neutral' : 
+           rating === 4 ? 'Happy' : 'Very Happy'}
+        </Text>
+      </Animated.View>
+    </Pressable>
   );
 };
 

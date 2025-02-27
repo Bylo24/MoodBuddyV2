@@ -55,7 +55,7 @@ export const MOCK_ACTIVITIES: Activity[] = [
   {
     id: '2',
     title: 'Gratitude Journaling',
-    description: 'Write down 3 things you\'re grateful for today and why they matter to you.',
+    description: "Write down 3 things you're grateful for today and why they matter to you.",
     category: 'journaling',
     duration: 10,
     isPremium: false,
@@ -119,7 +119,7 @@ export const MOCK_ACTIVITIES: Activity[] = [
   {
     id: '10',
     title: 'Connect with a Friend',
-    description: 'Reach out to a friend or family member you haven\'t spoken to in a while.',
+    description: "Reach out to a friend or family member you haven't spoken to in a while.",
     category: 'social',
     duration: 15,
     isPremium: false,
