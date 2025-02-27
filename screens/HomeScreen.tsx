@@ -4,7 +4,7 @@ import { theme } from '../theme/theme';
 import MoodSlider from '../components/MoodSlider';
 import ActivityCard from '../components/ActivityCard';
 import MoodTrendGraph from '../components/MoodTrendGraph';
-import DailyAffirmation from '../components/DailyAffirmation';
+import QuoteComponent from '../components/QuoteComponent';
 import { recentMoodEntries, recommendedActivities } from '../data/mockData';
 import { MoodRating } from '../types';
 
@@ -38,7 +38,7 @@ export default function HomeScreen() {
           <Text style={styles.date}>{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</Text>
         </View>
         
-        <DailyAffirmation />
+        <QuoteComponent />
         
         <View style={styles.moodCheckInContainer}>
           <Text style={styles.sectionTitle}>How are you feeling today?</Text>
