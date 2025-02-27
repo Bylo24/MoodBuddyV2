@@ -1,0 +1,33 @@
+const handleContinue = async () => {
+  if (!name.trim()) {
+    return;
+  }
+  
+  Keyboard.dismiss();
+  setIsLoading(true);
+  
+  try {
+    // Save the name to AsyncStorage
+    const trimmedName = name.trim();
+    await AsyncStorage.setItem('user_display_name', trimmedName);
+    console.log('Saved user_display_name in SetupNameScreen:', trimmedName);
+    
+    // Verify the name was saved
+    const storedName = await AsyncStorage.getItem('user_display_name');
+    console.log('Verified stored name after save in SetupNameScreen:', storedName);
+    
+    // Simulate a short loading state for better UX
+    setTimeout(() => {
+      setIsLoading(false);
+      onComplete(trimmedName);
+    }, 500);
+  } catch (error) {
+    console.error('Error saving name:', error);
+    Alert.alert(
+      'Error',
+      'There was a problem saving your name. Please try again.',
+      [{ text: 'OK' }]
+    );
+    setIsLoading(false);
+  }
+};
