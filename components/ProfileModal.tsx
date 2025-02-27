@@ -5,11 +5,12 @@ import ProfileScreen from '../screens/ProfileScreen';
 interface ProfileModalProps {
   visible: boolean;
   onClose: () => void;
+  onLogout: () => void;
 }
 
 const { height } = Dimensions.get('window');
 
-export default function ProfileModal({ visible, onClose }: ProfileModalProps) {
+export default function ProfileModal({ visible, onClose, onLogout }: ProfileModalProps) {
   const slideAnim = React.useRef(new Animated.Value(height)).current;
   
   React.useEffect(() => {
@@ -43,7 +44,7 @@ export default function ProfileModal({ visible, onClose }: ProfileModalProps) {
             { transform: [{ translateY: slideAnim }] }
           ]}
         >
-          <ProfileScreen onClose={onClose} />
+          <ProfileScreen onClose={onClose} onLogout={onLogout} />
         </Animated.View>
       </View>
     </Modal>

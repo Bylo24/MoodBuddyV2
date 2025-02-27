@@ -1,63 +1,79 @@
 import React, { useState, useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { SafeAreaView, StyleSheet, ActivityIndicator, View, Text } from 'react-native';
-import HomeScreen from './screens/HomeScreen';
+import { SafeAreaView, StyleSheet, View, Text, ActivityIndicator } from 'react-native';
 import { theme } from './theme/theme';
+import HomeScreen from './screens/HomeScreen';
+import LoginScreen from './screens/LoginScreen';
+import { isAuthenticated, signOut } from './services/authService';
 import { supabase } from './utils/supabaseClient';
-import { isAuthenticated } from './services/authService';
 
 export default function App() {
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-
+  
+  // Check authentication status when app loads
   useEffect(() => {
-    // Check if user is authenticated
-    const checkAuth = async () => {
-      try {
-        const authenticated = await isAuthenticated();
-        setIsLoggedIn(authenticated);
-      } catch (error) {
-        console.error('Error checking authentication:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     checkAuth();
-
+    
     // Set up auth state change listener
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setIsLoggedIn(!!session);
-      }
-    );
-
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth state changed:', event);
+      setIsLoggedIn(!!session);
+      setIsLoading(false);
+    });
+    
     return () => {
-      // Clean up the subscription
-      if (authListener && authListener.subscription) {
-        authListener.subscription.unsubscribe();
-      }
+      authListener?.subscription.unsubscribe();
     };
   }, []);
-
+  
+  // Check if user is authenticated
+  const checkAuth = async () => {
+    setIsLoading(true);
+    try {
+      const authenticated = await isAuthenticated();
+      setIsLoggedIn(authenticated);
+    } catch (error) {
+      console.error('Error checking auth:', error);
+      setIsLoggedIn(false);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Handle login
+  const handleLogin = () => {
+    setIsLoggedIn(true);
+  };
+  
+  // Handle logout
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      setIsLoggedIn(false);
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
+  
   if (isLoading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={styles.loadingContainer}>
         <StatusBar style="light" />
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
-          <Text style={styles.loadingText}>Loading Mood Buddy...</Text>
-        </View>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+        <Text style={styles.loadingText}>Loading Mood Buddy...</Text>
       </SafeAreaView>
     );
   }
-
-  // For now, we'll just show the HomeScreen regardless of auth state
-  // In a real app, you'd show a login screen if not authenticated
+  
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="light" />
-      <HomeScreen />
+      {isLoggedIn ? (
+        <HomeScreen onLogout={handleLogout} />
+      ) : (
+        <LoginScreen onLogin={handleLogin} />
+      )}
     </SafeAreaView>
   );
 }
@@ -69,6 +85,7 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
+    backgroundColor: theme.colors.background,
     justifyContent: 'center',
     alignItems: 'center',
   },

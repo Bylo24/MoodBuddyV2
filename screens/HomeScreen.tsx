@@ -15,7 +15,11 @@ import { recommendedActivities } from '../data/mockData';
 // Get screen dimensions
 const { width: screenWidth } = Dimensions.get('window');
 
-export default function HomeScreen() {
+interface HomeScreenProps {
+  onLogout: () => void;
+}
+
+export default function HomeScreen({ onLogout }: HomeScreenProps) {
   // State for selected mood (just for UI demonstration)
   const [selectedMood, setSelectedMood] = useState<MoodRating>(3);
   const [userName, setUserName] = useState<string>('');
@@ -44,6 +48,7 @@ export default function HomeScreen() {
         if (!isLoggedIn) {
           // Handle not authenticated state
           console.log('User not authenticated');
+          onLogout();
           setIsLoading(false);
           return;
         }
@@ -315,7 +320,8 @@ export default function HomeScreen() {
       
       <ProfileModal 
         visible={profileModalVisible} 
-        onClose={handleProfileModalClose} 
+        onClose={handleProfileModalClose}
+        onLogout={onLogout}
       />
     </SafeAreaView>
   );

@@ -35,7 +35,10 @@ export const isPastDate = (dateString: string): boolean => {
 export const getMoodEntryForDate = async (date: string): Promise<MoodEntry | null> => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
+    if (!user) {
+      console.error('No authenticated user found');
+      return null;
+    }
     
     const { data, error } = await supabase
       .from('mood_entries')
@@ -123,7 +126,10 @@ export const saveTodayMood = async (rating: MoodRating, note?: string): Promise<
 export const getAllMoodEntries = async (): Promise<MoodEntry[]> => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return [];
+    if (!user) {
+      console.error('No authenticated user found');
+      return [];
+    }
     
     const { data, error } = await supabase
       .from('mood_entries')
@@ -147,7 +153,10 @@ export const getAllMoodEntries = async (): Promise<MoodEntry[]> => {
 export const getCurrentWeekMoodEntries = async (): Promise<MoodEntry[]> => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return [];
+    if (!user) {
+      console.error('No authenticated user found');
+      return [];
+    }
     
     // Get current date
     const now = new Date();
@@ -191,7 +200,10 @@ export const getCurrentWeekMoodEntries = async (): Promise<MoodEntry[]> => {
 export const getRecentMoodEntries = async (days: number = 7): Promise<MoodEntry[]> => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return [];
+    if (!user) {
+      console.error('No authenticated user found');
+      return [];
+    }
     
     const endDate = getTodayDate();
     const startDate = formatDate(new Date(Date.now() - (days * 24 * 60 * 60 * 1000)));
@@ -250,6 +262,12 @@ export const getAverageMood = async (days: number = 7): Promise<number | null> =
 export const getMoodStreak = async (): Promise<number> => {
   try {
     console.log('Calculating mood streak...');
+    
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      console.error('No authenticated user found');
+      return 0;
+    }
     
     // Get all mood entries
     const entries = await getAllMoodEntries();

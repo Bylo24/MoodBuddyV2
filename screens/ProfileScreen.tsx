@@ -7,9 +7,10 @@ import { getMoodStreak, getAverageMood } from '../services/moodService';
 
 interface ProfileScreenProps {
   onClose: () => void;
+  onLogout: () => void;
 }
 
-export default function ProfileScreen({ onClose }: ProfileScreenProps) {
+export default function ProfileScreen({ onClose, onLogout }: ProfileScreenProps) {
   const [userName, setUserName] = useState<string>('');
   const [email, setEmail] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
@@ -60,7 +61,7 @@ export default function ProfileScreen({ onClose }: ProfileScreenProps) {
           onPress: async () => {
             try {
               await signOut();
-              // The auth listener in App.tsx will handle the navigation
+              onLogout();
             } catch (error) {
               console.error('Error signing out:', error);
               Alert.alert('Error', 'Failed to sign out. Please try again.');
@@ -314,6 +315,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: theme.colors.background,
   },
   loadingText: {
     marginTop: 16,
