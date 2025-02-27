@@ -51,11 +51,16 @@ export const signInWithEmail = async (email: string, password: string) => {
 export const signUpWithEmail = async (email: string, password: string) => {
   console.log('Attempting to sign up with email:', email);
   try {
+    // For testing purposes, we'll use signUp without email confirmation
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: 'moodbuddy://auth/callback',
+        // Skip email verification for now
+        emailRedirectTo: undefined,
+        data: {
+          name: email.split('@')[0], // Use part of email as name
+        }
       },
     });
     
@@ -64,8 +69,17 @@ export const signUpWithEmail = async (email: string, password: string) => {
       throw error;
     }
     
-    console.log('Sign up successful:', data.user?.id, 'Email confirmation sent:', !data.session);
-    return data;
+    // Check if user was created and session exists
+    if (data.user && data.session) {
+      console.log('Sign up successful with immediate session:', data.user.id);
+      return data;
+    } else if (data.user) {
+      console.log('Sign up successful, email confirmation required:', data.user.id);
+      // For testing, we'll try to sign in immediately
+      return await signInWithEmail(email, password);
+    } else {
+      throw new Error('Failed to create user account');
+    }
   } catch (error: any) {
     console.error('Error signing up:', error.message || error);
     throw error;

@@ -40,7 +40,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
   };
   
   const validatePassword = (password: string): boolean => {
-    // At least 8 characters, 1 uppercase, 1 lowercase, 1 number
+    // At least 8 characters
     return password.length >= 8;
   };
   
@@ -73,14 +73,26 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
     
     try {
       if (isSignUp) {
-        await signUpWithEmail(email, password);
-        Alert.alert(
-          'Verification Email Sent',
-          'Please check your email to verify your account before logging in.',
-          [{ text: 'OK', onPress: () => setIsSignUp(false) }]
-        );
+        console.log('Starting sign up process...');
+        const result = await signUpWithEmail(email, password);
+        console.log('Sign up result:', result);
+        
+        // If we have a session, login was successful
+        if (result.session) {
+          console.log('Sign up successful with session, proceeding to app');
+          onLogin();
+        } else {
+          // Show confirmation message
+          Alert.alert(
+            'Account Created',
+            'Your account has been created. You can now log in.',
+            [{ text: 'OK', onPress: () => setIsSignUp(false) }]
+          );
+        }
       } else {
+        console.log('Starting sign in process...');
         await signInWithEmail(email, password);
+        console.log('Sign in successful, proceeding to app');
         onLogin();
       }
     } catch (error: any) {

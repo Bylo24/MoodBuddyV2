@@ -21,8 +21,10 @@ export default function App() {
       console.log('Session:', session ? 'Present' : 'None');
       
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        console.log('User signed in, updating UI');
         setIsLoggedIn(true);
       } else if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
+        console.log('User signed out, updating UI');
         setIsLoggedIn(false);
       }
       
