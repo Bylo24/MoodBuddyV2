@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Alert, ActivityIndicator, ScrollView } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, Alert, ActivityIndicator, ScrollView, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme/theme';
-import { getCurrentUser, signOut } from '../services/authService';
+import { getCurrentUser } from '../services/authService';
 import { getMoodStreak, getAverageMood } from '../services/moodService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase } from '../utils/supabaseClient';
 
 interface ProfileScreenProps {
   onClose: () => void;
@@ -18,6 +19,17 @@ export default function ProfileScreen({ onClose, onLogout }: ProfileScreenProps)
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [streak, setStreak] = useState(0);
   const [averageMood, setAverageMood] = useState<number | null>(null);
+  const [languageModalVisible, setLanguageModalVisible] = useState(false);
+  const [currentLanguage, setCurrentLanguage] = useState('English');
+  
+  // Available languages
+  const languages = [
+    { code: 'en', name: 'English' },
+    { code: 'es', name: 'Español' },
+    { code: 'fr', name: 'Français' },
+    { code: 'de', name: 'Deutsch' },
+    { code: 'zh', name: '中文' },
+  ];
   
   useEffect(() => {
     const loadUserData = async () => {
@@ -25,6 +37,15 @@ export default function ProfileScreen({ onClose, onLogout }: ProfileScreenProps)
       try {
         // Try to get stored display name first
         const storedName = await AsyncStorage.getItem('user_display_name');
+        
+        // Load saved language preference
+        const savedLanguage = await AsyncStorage.getItem('user_language');
+        if (savedLanguage) {
+          const langObj = languages.find(lang => lang.code === savedLanguage);
+          if (langObj) {
+            setCurrentLanguage(langObj.name);
+          }
+        }
         
         const user = await getCurrentUser();
         if (user) {
@@ -56,7 +77,8 @@ export default function ProfileScreen({ onClose, onLogout }: ProfileScreenProps)
     loadUserData();
   }, []);
   
-  const handleSignOut = async () => {
+  // Direct sign out function with minimal steps
+  const handleDirectSignOut = async () => {
     Alert.alert(
       'Sign Out',
       'Are you sure you want to sign out?',
@@ -70,37 +92,34 @@ export default function ProfileScreen({ onClose, onLogout }: ProfileScreenProps)
           style: 'destructive',
           onPress: async () => {
             try {
+              // Show loading state
               setIsSigningOut(true);
-              console.log('User confirmed sign out, proceeding...');
+              console.log('User confirmed direct sign out');
               
-              // First close the modal to prevent UI issues
+              // Close the modal first
               onClose();
               
-              // Add a small delay to allow the modal to close
+              // Short delay to let modal close
               setTimeout(async () => {
                 try {
-                  await signOut();
-                  console.log('Sign out successful, calling onLogout callback');
+                  // Clear all storage
+                  console.log('Clearing AsyncStorage');
+                  await AsyncStorage.clear();
                   
-                  // Clear any stored user data
-                  try {
-                    await AsyncStorage.removeItem('user_display_name');
-                    console.log('Cleared user_display_name from AsyncStorage');
-                  } catch (storageError) {
-                    console.error('Error clearing user data:', storageError);
-                  }
+                  // Sign out from Supabase
+                  console.log('Signing out from Supabase');
+                  await supabase.auth.signOut();
                   
-                  // Call the onLogout callback to update the app state
+                  // Call the logout callback
+                  console.log('Calling onLogout callback');
                   onLogout();
                 } catch (error) {
-                  console.error('Error during sign out:', error);
+                  console.error('Error during direct sign out:', error);
                   Alert.alert('Error', 'Failed to sign out. Please try again.');
-                  setIsSigningOut(false);
                 }
               }, 300);
             } catch (error) {
-              console.error('Error in sign out process:', error);
-              Alert.alert('Error', 'Failed to sign out. Please try again.');
+              console.error('Error in direct sign out:', error);
               setIsSigningOut(false);
             }
           },
@@ -108,6 +127,26 @@ export default function ProfileScreen({ onClose, onLogout }: ProfileScreenProps)
       ],
       { cancelable: true }
     );
+  };
+  
+  // Handle language selection
+  const handleLanguageSelect = async (langCode: string, langName: string) => {
+    try {
+      // Save language preference
+      await AsyncStorage.setItem('user_language', langCode);
+      setCurrentLanguage(langName);
+      setLanguageModalVisible(false);
+      
+      // Show confirmation
+      Alert.alert(
+        'Language Updated',
+        `Your language has been set to ${langName}.`,
+        [{ text: 'OK' }]
+      );
+    } catch (error) {
+      console.error('Error saving language preference:', error);
+      Alert.alert('Error', 'Failed to update language. Please try again.');
+    }
   };
   
   if (isLoading) {
@@ -185,16 +224,16 @@ export default function ProfileScreen({ onClose, onLogout }: ProfileScreenProps)
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Preferences</Text>
           
-          <TouchableOpacity style={styles.menuItem}>
-            <Ionicons name="color-palette-outline" size={24} color={theme.colors.text} />
-            <Text style={styles.menuItemText}>Appearance</Text>
-            <Ionicons name="chevron-forward" size={20} color={theme.colors.subtext} />
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={() => setLanguageModalVisible(true)}
+          >
             <Ionicons name="language-outline" size={24} color={theme.colors.text} />
             <Text style={styles.menuItemText}>Language</Text>
-            <Ionicons name="chevron-forward" size={20} color={theme.colors.subtext} />
+            <View style={styles.menuItemRight}>
+              <Text style={styles.menuItemValue}>{currentLanguage}</Text>
+              <Ionicons name="chevron-forward" size={20} color={theme.colors.subtext} />
+            </View>
           </TouchableOpacity>
         </View>
         
@@ -216,7 +255,7 @@ export default function ProfileScreen({ onClose, onLogout }: ProfileScreenProps)
         
         <TouchableOpacity 
           style={styles.signOutButton}
-          onPress={handleSignOut}
+          onPress={handleDirectSignOut}
           disabled={isSigningOut}
         >
           {isSigningOut ? (
@@ -229,6 +268,53 @@ export default function ProfileScreen({ onClose, onLogout }: ProfileScreenProps)
           )}
         </TouchableOpacity>
       </ScrollView>
+      
+      {/* Language Selection Modal */}
+      <Modal
+        visible={languageModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setLanguageModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.languageModalContainer}>
+            <View style={styles.languageModalHeader}>
+              <Text style={styles.languageModalTitle}>Select Language</Text>
+              <TouchableOpacity 
+                style={styles.languageModalCloseButton}
+                onPress={() => setLanguageModalVisible(false)}
+              >
+                <Ionicons name="close" size={24} color={theme.colors.text} />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView style={styles.languageList}>
+              {languages.map((language) => (
+                <TouchableOpacity
+                  key={language.code}
+                  style={[
+                    styles.languageItem,
+                    currentLanguage === language.name && styles.languageItemSelected
+                  ]}
+                  onPress={() => handleLanguageSelect(language.code, language.name)}
+                >
+                  <Text 
+                    style={[
+                      styles.languageItemText,
+                      currentLanguage === language.name && styles.languageItemTextSelected
+                    ]}
+                  >
+                    {language.name}
+                  </Text>
+                  {currentLanguage === language.name && (
+                    <Ionicons name="checkmark" size={20} color={theme.colors.primary} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -339,6 +425,15 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     marginLeft: 12,
   },
+  menuItemRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  menuItemValue: {
+    fontSize: 14,
+    color: theme.colors.subtext,
+    marginRight: 8,
+  },
   signOutButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -366,5 +461,58 @@ const styles = StyleSheet.create({
     marginTop: 16,
     fontSize: 16,
     color: theme.colors.subtext,
+  },
+  // Language modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  languageModalContainer: {
+    width: '80%',
+    maxHeight: '70%',
+    backgroundColor: theme.colors.background,
+    borderRadius: 16,
+    overflow: 'hidden',
+    ...theme.shadows.large,
+  },
+  languageModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+  },
+  languageModalTitle: {
+    fontSize: 18,
+    fontWeight: theme.fontWeights.bold,
+    color: theme.colors.text,
+  },
+  languageModalCloseButton: {
+    padding: 4,
+  },
+  languageList: {
+    padding: 8,
+  },
+  languageItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    borderRadius: 8,
+    marginVertical: 4,
+  },
+  languageItemSelected: {
+    backgroundColor: theme.colors.primary + '15',
+  },
+  languageItemText: {
+    fontSize: 16,
+    color: theme.colors.text,
+  },
+  languageItemTextSelected: {
+    color: theme.colors.primary,
+    fontWeight: theme.fontWeights.semibold,
   },
 });
