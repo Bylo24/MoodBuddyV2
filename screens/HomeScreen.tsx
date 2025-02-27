@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, View, ScrollView } from 'react-native';
 import { theme } from '../theme/theme';
-import MoodButton from '../components/MoodButton';
+import MoodSlider from '../components/MoodSlider';
 import ActivityCard from '../components/ActivityCard';
 import MoodTrendGraph from '../components/MoodTrendGraph';
 import DailyAffirmation from '../components/DailyAffirmation';
@@ -10,7 +10,7 @@ import { MoodRating } from '../types';
 
 export default function HomeScreen() {
   // State for selected mood (just for UI demonstration)
-  const [selectedMood, setSelectedMood] = useState<MoodRating | null>(null);
+  const [selectedMood, setSelectedMood] = useState<MoodRating>(3);
   
   // Get the most recent mood entry
   const latestMood = recentMoodEntries[0];
@@ -38,43 +38,7 @@ export default function HomeScreen() {
       
       <View style={styles.moodCheckInContainer}>
         <Text style={styles.sectionTitle}>How are you feeling today?</Text>
-        <View style={styles.moodButtonsContainer}>
-          <MoodButton 
-            rating={1} 
-            label="Terrible" 
-            emoji="😢" 
-            selected={selectedMood === 1}
-            onPress={() => setSelectedMood(1)}
-          />
-          <MoodButton 
-            rating={2} 
-            label="Not Good" 
-            emoji="😕" 
-            selected={selectedMood === 2}
-            onPress={() => setSelectedMood(2)}
-          />
-          <MoodButton 
-            rating={3} 
-            label="Okay" 
-            emoji="😐" 
-            selected={selectedMood === 3}
-            onPress={() => setSelectedMood(3)}
-          />
-          <MoodButton 
-            rating={4} 
-            label="Good" 
-            emoji="🙂" 
-            selected={selectedMood === 4}
-            onPress={() => setSelectedMood(4)}
-          />
-          <MoodButton 
-            rating={5} 
-            label="Great" 
-            emoji="😄" 
-            selected={selectedMood === 5}
-            onPress={() => setSelectedMood(5)}
-          />
-        </View>
+        <MoodSlider value={selectedMood} onValueChange={setSelectedMood} />
       </View>
       
       <View style={styles.moodSummaryContainer}>
@@ -204,11 +168,6 @@ const styles = StyleSheet.create({
     marginTop: -theme.spacing.sm,
     marginBottom: theme.spacing.md,
     lineHeight: theme.lineHeights.normal * theme.fontSizes.md,
-  },
-  moodButtonsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    flexWrap: 'wrap',
   },
   moodSummaryContainer: {
     marginBottom: theme.spacing.xl,
