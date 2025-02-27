@@ -1,15 +1,31 @@
+import { supabase, forceSignOut } from '../utils/supabaseClient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Rest of your existing code...
+
 // Sign out
 export const signOut = async () => {
   console.log('Attempting to sign out');
-  
-  return retryOperation(async () => {
-    const { error } = await supabase.auth.signOut();
+  try {
+    // Clear user data
+    await AsyncStorage.removeItem('user_display_name');
+    await AsyncStorage.removeItem('onboarding_completed');
     
-    if (error) {
-      console.error('Sign out error:', error.message);
-      throw error;
+    // Use the force sign out function
+    const success = await forceSignOut();
+    
+    if (!success) {
+      console.error('Force sign out failed, trying regular sign out');
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Sign out error:', error.message);
+        throw error;
+      }
     }
     
     console.log('Sign out successful');
-  });
+  } catch (error: any) {
+    console.error('Error signing out:', error.message || error);
+    throw error;
+  }
 };

@@ -1,30 +1,100 @@
-// Handle logout
-const handleLogout = async () => {
-  console.log('handleLogout called in App.tsx');
+import React, { useState, useEffect } from 'react';
+import { StatusBar } from 'expo-status-bar';
+import { SafeAreaView, StyleSheet, View, Text, ActivityIndicator, Alert } from 'react-native';
+import { theme } from './theme/theme';
+import HomeScreen from './screens/HomeScreen';
+import LoginScreen from './screens/LoginScreen';
+import SetupNameScreen from './screens/SetupNameScreen';
+import IntroductionScreen from './screens/IntroductionScreen';
+import TipsScreen from './screens/TipsScreen';
+import { isAuthenticated, signOut, getCurrentUser } from './services/authService';
+import { supabase } from './utils/supabaseClient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Define app states
+type AppState = 'loading' | 'login' | 'onboarding-name' | 'onboarding-intro' | 'onboarding-tips' | 'home';
+
+export default function App() {
+  const [appState, setAppState] = useState<AppState>('loading');
+  const [isLoading, setIsLoading] = useState(true);
+  const [userName, setUserName] = useState<string>('');
   
-  try {
+  // Force a refresh of the app state
+  const forceRefresh = async () => {
     setIsLoading(true);
-    console.log('Setting loading state to true');
-    
-    // Clear user data
     try {
-      await AsyncStorage.removeItem('user_display_name');
-      console.log('Cleared user_display_name from AsyncStorage');
-    } catch (storageError) {
-      console.error('Error clearing user data:', storageError);
+      const session = await supabase.auth.getSession();
+      console.log('Current session:', session?.data?.session ? 'Active' : 'None');
+      
+      if (!session?.data?.session) {
+        console.log('No active session, setting app state to login');
+        setAppState('login');
+      } else {
+        console.log('Active session found, checking onboarding status');
+        await checkOnboardingStatus();
+      }
+    } catch (error) {
+      console.error('Error in forceRefresh:', error);
+      setAppState('login');
+    } finally {
+      setIsLoading(false);
     }
+  };
+  
+  // Check authentication status when app loads
+  useEffect(() => {
+    forceRefresh();
     
-    // Reset state variables
-    setUserName('');
-    console.log('Reset userName state');
+    // Set up auth state change listener
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Auth state changed:', event);
+      console.log('Session:', session ? 'Present' : 'None');
+      
+      if (event === 'SIGNED_IN') {
+        console.log('User signed in, checking onboarding status');
+        checkOnboardingStatus();
+      } else if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
+        console.log('User signed out, updating UI');
+        setAppState('login');
+        setIsLoading(false);
+      }
+    });
     
-    // Force app state to login
-    console.log('Setting appState to login');
-    setAppState('login');
-  } catch (error) {
-    console.error('Error in handleLogout:', error);
-  } finally {
-    setIsLoading(false);
-    console.log('Setting loading state to false');
-  }
-};
+    return () => {
+      authListener?.subscription.unsubscribe();
+    };
+  }, []);
+  
+  // Rest of your existing code...
+  
+  // Update the handleLogout function
+  const handleLogout = async () => {
+    console.log('handleLogout called in App.tsx');
+    setIsLoading(true);
+    
+    try {
+      // Clear AsyncStorage
+      await AsyncStorage.clear();
+      console.log('AsyncStorage cleared');
+      
+      // Sign out from Supabase
+      await supabase.auth.signOut();
+      console.log('Signed out from Supabase');
+      
+      // Reset state
+      setUserName('');
+      setAppState('login');
+      console.log('App state set to login');
+    } catch (error) {
+      console.error('Error in handleLogout:', error);
+      Alert.alert('Error', 'Failed to sign out. Please try again.');
+      
+      // Force app state to login anyway
+      setAppState('login');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Rest of your component...
+}

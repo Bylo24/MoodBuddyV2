@@ -1,39 +1,59 @@
-const handleSignOut = async () => {
-  Alert.alert(
-    'Sign Out',
-    'Are you sure you want to sign out?',
-    [
-      {
-        text: 'Cancel',
-        style: 'cancel',
-      },
-      {
-        text: 'Sign Out',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            console.log('User confirmed sign out, proceeding...');
-            // First close the modal to prevent UI issues
-            onClose();
-            
-            // Add a small delay to allow the modal to close
-            setTimeout(async () => {
-              try {
-                await signOut();
-                console.log('Sign out successful, calling onLogout callback');
-                onLogout();
-              } catch (error) {
-                console.error('Error during sign out:', error);
-                Alert.alert('Error', 'Failed to sign out. Please try again.');
-              }
-            }, 300);
-          } catch (error) {
-            console.error('Error in sign out process:', error);
-            Alert.alert('Error', 'Failed to sign out. Please try again.');
-          }
-        },
-      },
-    ],
-    { cancelable: true }
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, View, Text, TouchableOpacity, Alert, ActivityIndicator, ScrollView } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { theme } from '../theme/theme';
+import { getCurrentUser, signOut } from '../services/authService';
+import { getMoodStreak, getAverageMood } from '../services/moodService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { supabase } from '../utils/supabaseClient';
+
+interface ProfileScreenProps {
+  onClose: () => void;
+  onLogout: () => void;
+}
+
+export default function ProfileScreen({ onClose, onLogout }: ProfileScreenProps) {
+  // Existing state variables...
+  
+  // New direct sign out function that bypasses the existing flow
+  const handleDirectSignOut = async () => {
+    try {
+      setIsSigningOut(true);
+      
+      // First close the modal
+      onClose();
+      
+      // Clear AsyncStorage
+      await AsyncStorage.clear();
+      console.log('AsyncStorage cleared');
+      
+      // Sign out from Supabase directly
+      await supabase.auth.signOut();
+      console.log('Signed out from Supabase');
+      
+      // Force reload the app by calling onLogout
+      setTimeout(() => {
+        console.log('Calling onLogout callback');
+        onLogout();
+      }, 500);
+    } catch (error) {
+      console.error('Error in direct sign out:', error);
+      Alert.alert('Error', 'Failed to sign out. Please try again.');
+    }
+  };
+  
+  // Add this at the end of your JSX, after all other buttons
+  return (
+    <View style={styles.container}>
+      {/* Existing content... */}
+      
+      {/* Add this at the bottom of your ScrollView, after the regular sign out button */}
+      <TouchableOpacity 
+        style={[styles.signOutButton, { marginTop: 16, backgroundColor: theme.colors.error }]}
+        onPress={handleDirectSignOut}
+      >
+        <Text style={[styles.signOutText, { color: 'white' }]}>Emergency Sign Out</Text>
+      </TouchableOpacity>
+    </View>
   );
-};
+}
