@@ -1,8 +1,6 @@
-import React from 'react';
-import { SafeAreaView, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { SafeAreaView, StyleSheet } from 'react-native';
 import HomeScreen from './screens/HomeScreen';
-import { COLORS } from './theme/theme';
 
 export default function App() {
   return (
@@ -16,6 +14,6 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: '#fff',
   },
 });
