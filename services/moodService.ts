@@ -16,6 +16,13 @@ export const isToday = (dateString: string): boolean => {
   return dateString === getTodayDate();
 };
 
+// Check if a date is yesterday
+export const isYesterday = (dateString: string): boolean => {
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  return dateString === formatDate(yesterday);
+};
+
 // Check if a date is in the past
 export const isPastDate = (dateString: string): boolean => {
   const today = getTodayDate();
@@ -213,53 +220,75 @@ export const getAverageMood = async (days: number = 7): Promise<number | null> =
   }
 };
 
-// Get mood streak (consecutive days with mood entries)
-export const getMoodStreak = async (): Promise<number> => {
+// Get all mood entries sorted by date
+export const getAllMoodEntries = async (): Promise<MoodEntry[]> => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return 0;
+    if (!user) return [];
     
     const { data, error } = await supabase
       .from('mood_entries')
-      .select('date')
+      .select('*')
       .eq('user_id', user.id)
       .order('date', { ascending: false });
     
-    if (error || !data) {
-      console.error('Error fetching mood entries for streak:', error);
-      return 0;
+    if (error) {
+      console.error('Error fetching all mood entries:', error);
+      return [];
     }
     
-    if (data.length === 0) return 0;
+    return data as MoodEntry[];
+  } catch (error) {
+    console.error('Unexpected error in getAllMoodEntries:', error);
+    return [];
+  }
+};
+
+// Get mood streak (consecutive days with mood entries)
+export const getMoodStreak = async (): Promise<number> => {
+  try {
+    const allEntries = await getAllMoodEntries();
+    if (allEntries.length === 0) return 0;
+    
+    // Sort entries by date (newest first)
+    const sortedEntries = [...allEntries].sort((a, b) => 
+      new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
     
     // Check if the most recent entry is from today or yesterday
-    const mostRecentDate = new Date(data[0].date);
+    const mostRecentDate = new Date(sortedEntries[0].date);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
+    yesterday.setHours(0, 0, 0, 0);
     
-    if (mostRecentDate < yesterday) {
-      // Streak is broken if most recent entry is older than yesterday
+    // If most recent entry is older than yesterday, streak is broken
+    if (mostRecentDate.getTime() < yesterday.getTime()) {
+      console.log('Streak broken: Most recent entry is older than yesterday');
       return 0;
     }
     
-    // Count consecutive days
+    // Start counting streak
     let streak = 1;
-    let currentDate = mostRecentDate;
+    let currentDate = new Date(mostRecentDate);
     
-    for (let i = 1; i < data.length; i++) {
-      const entryDate = new Date(data[i].date);
+    // Loop through dates backwards, checking for consecutive days
+    for (let i = 1; i < sortedEntries.length; i++) {
+      const prevDate = new Date(currentDate);
+      prevDate.setDate(prevDate.getDate() - 1);
+      prevDate.setHours(0, 0, 0, 0);
+      
+      const entryDate = new Date(sortedEntries[i].date);
+      entryDate.setHours(0, 0, 0, 0);
       
       // Check if this entry is from the previous day
-      const expectedPrevDate = new Date(currentDate);
-      expectedPrevDate.setDate(expectedPrevDate.getDate() - 1);
-      
-      if (entryDate.getTime() === expectedPrevDate.getTime()) {
+      if (entryDate.getTime() === prevDate.getTime()) {
         streak++;
         currentDate = entryDate;
       } else {
+        // Streak is broken
         break;
       }
     }
