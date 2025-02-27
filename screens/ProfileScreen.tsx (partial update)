@@ -1,0 +1,39 @@
+const handleSignOut = async () => {
+  Alert.alert(
+    'Sign Out',
+    'Are you sure you want to sign out?',
+    [
+      {
+        text: 'Cancel',
+        style: 'cancel',
+      },
+      {
+        text: 'Sign Out',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            console.log('User confirmed sign out, proceeding...');
+            // First close the modal to prevent UI issues
+            onClose();
+            
+            // Add a small delay to allow the modal to close
+            setTimeout(async () => {
+              try {
+                await signOut();
+                console.log('Sign out successful, calling onLogout callback');
+                onLogout();
+              } catch (error) {
+                console.error('Error during sign out:', error);
+                Alert.alert('Error', 'Failed to sign out. Please try again.');
+              }
+            }, 300);
+          } catch (error) {
+            console.error('Error in sign out process:', error);
+            Alert.alert('Error', 'Failed to sign out. Please try again.');
+          }
+        },
+      },
+    ],
+    { cancelable: true }
+  );
+};

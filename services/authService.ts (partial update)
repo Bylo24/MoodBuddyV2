@@ -1,0 +1,15 @@
+// Sign out
+export const signOut = async () => {
+  console.log('Attempting to sign out');
+  
+  return retryOperation(async () => {
+    const { error } = await supabase.auth.signOut();
+    
+    if (error) {
+      console.error('Sign out error:', error.message);
+      throw error;
+    }
+    
+    console.log('Sign out successful');
+  });
+};
