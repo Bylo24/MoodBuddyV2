@@ -8,7 +8,7 @@ import { getTodayMoodEntry, saveTodayMood, isToday, canEditMood } from '../servi
 interface MoodSliderProps {
   value: MoodRating;
   onValueChange: (value: MoodRating) => void;
-  onMoodSaved?: () => void; // New callback for when mood is saved
+  onMoodSaved?: () => void; // Callback for when mood is saved
   disabled?: boolean;
 }
 
@@ -29,6 +29,7 @@ export default function MoodSlider({
   const [isLoading, setIsLoading] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [isEditable, setIsEditable] = useState(true);
+  const [localValue, setLocalValue] = useState<MoodRating>(value);
   
   // Define mood options
   const moodOptions: MoodOption[] = [
@@ -39,8 +40,13 @@ export default function MoodSlider({
     { rating: 5, label: "Great", emoji: "😄", color: theme.colors.mood5 },
   ];
   
-  // Get current mood option based on value
-  const currentMood = moodOptions.find(option => option.rating === value) || moodOptions[2];
+  // Update local value when prop changes
+  useEffect(() => {
+    setLocalValue(value);
+  }, [value]);
+  
+  // Get current mood option based on local value
+  const currentMood = moodOptions.find(option => option.rating === localValue) || moodOptions[2];
   
   // Animate emoji when mood changes
   useEffect(() => {
@@ -56,7 +62,7 @@ export default function MoodSlider({
         useNativeDriver: true,
       }),
     ]).start();
-  }, [value]);
+  }, [localValue]);
   
   // Load today's mood entry when component mounts
   useEffect(() => {
@@ -64,6 +70,7 @@ export default function MoodSlider({
       try {
         const entry = await getTodayMoodEntry();
         if (entry) {
+          setLocalValue(entry.rating);
           onValueChange(entry.rating);
           setIsSaved(true);
           
@@ -83,8 +90,8 @@ export default function MoodSlider({
     // Convert to integer between 1-5
     const moodRating = Math.round(sliderValue) as MoodRating;
     
-    // Update local state and parent component
-    onValueChange(moodRating);
+    // Update local state only (don't save to database yet)
+    setLocalValue(moodRating);
   };
   
   // Handle slider value change (when sliding completes)
@@ -92,15 +99,25 @@ export default function MoodSlider({
     // Convert to integer between 1-5
     const moodRating = Math.round(sliderValue) as MoodRating;
     
+    // Update parent component state
+    onValueChange(moodRating);
+    
     // Save to database
     try {
       setIsLoading(true);
-      await saveTodayMood(moodRating);
-      setIsSaved(true);
+      const savedEntry = await saveTodayMood(moodRating);
       
-      // Call the onMoodSaved callback to refresh parent component data
-      if (onMoodSaved) {
-        onMoodSaved();
+      if (savedEntry) {
+        setIsSaved(true);
+        console.log('Mood saved successfully:', savedEntry);
+        
+        // Call the onMoodSaved callback to refresh parent component data
+        if (onMoodSaved) {
+          onMoodSaved();
+        }
+      } else {
+        console.error('Failed to save mood: No entry returned');
+        Alert.alert('Error', 'Failed to save your mood. Please try again.');
       }
     } catch (error) {
       console.error('Error saving mood:', error);
@@ -117,13 +134,13 @@ export default function MoodSlider({
         minimumValue={1}
         maximumValue={5}
         step={1}
-        value={value}
+        value={localValue}
         onValueChange={handleSliderChange}
         onSlidingComplete={handleSlidingComplete}
         minimumTrackTintColor={currentMood.color}
         maximumTrackTintColor={theme.colors.border}
         thumbTintColor={currentMood.color}
-        disabled={disabled || !isEditable}
+        disabled={disabled || !isEditable || isLoading}
       />
       
       <View style={styles.labelContainer}>
@@ -132,7 +149,7 @@ export default function MoodSlider({
             key={option.rating} 
             style={[
               styles.sliderLabel,
-              value === option.rating && { color: option.color, fontWeight: theme.fontWeights.bold }
+              localValue === option.rating && { color: option.color, fontWeight: theme.fontWeights.bold }
             ]}
           >
             {option.rating}
@@ -153,7 +170,9 @@ export default function MoodSlider({
           {currentMood.label}
         </Text>
         
-        {isSaved && (
+        {isLoading ? (
+          <Text style={styles.savingText}>Saving your mood...</Text>
+        ) : isSaved && (
           <Text style={styles.savedText}>
             {isEditable 
               ? "Today's mood is saved" 
@@ -204,6 +223,12 @@ const styles = StyleSheet.create({
   savedText: {
     fontSize: 12,
     color: theme.colors.subtext,
+    marginTop: 8,
+    fontStyle: 'italic',
+  },
+  savingText: {
+    fontSize: 12,
+    color: theme.colors.primary,
     marginTop: 8,
     fontStyle: 'italic',
   },

@@ -8,7 +8,7 @@ import QuoteComponent from '../components/QuoteComponent';
 import Header from '../components/Header';
 import ProfileModal from '../components/ProfileModal';
 import { MoodRating } from '../types';
-import { getTodayMoodEntry, getRecentMoodEntries, getMoodStreak, getAverageMood } from '../services/moodService';
+import { getTodayMoodEntry, getRecentMoodEntries, getMoodStreak, getWeeklyAverageMood, getCurrentWeekMoodEntries } from '../services/moodService';
 import { getCurrentUser, isAuthenticated } from '../services/authService';
 import { recommendedActivities } from '../data/mockData';
 
@@ -21,10 +21,9 @@ export default function HomeScreen() {
   const [userName, setUserName] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [streak, setStreak] = useState(0);
-  const [averageMood, setAverageMood] = useState<number | null>(null);
+  const [weeklyAverage, setWeeklyAverage] = useState<number | null>(null);
   const [todayMood, setTodayMood] = useState<MoodRating | null>(null);
   const [isSliderDisabled, setIsSliderDisabled] = useState(false);
-  const [recentEntries, setRecentEntries] = useState<any[]>([]);
   
   // State for mood trend graph refresh
   const [trendGraphKey, setTrendGraphKey] = useState(0);
@@ -84,66 +83,36 @@ export default function HomeScreen() {
     };
   }, []);
   
-  // Calculate average mood based on recent entries and today's mood
-  useEffect(() => {
-    // If we have a today's mood and recent entries, calculate the average
-    if (todayMood !== null && recentEntries.length > 0) {
-      // Create a copy of recent entries
-      const entries = [...recentEntries];
-      
-      // Find if today's entry is already in the list
-      const todayIndex = entries.findIndex(entry => 
-        new Date(entry.date).toDateString() === new Date().toDateString()
-      );
-      
-      // If today's entry exists, update it; otherwise add it
-      if (todayIndex >= 0) {
-        entries[todayIndex].rating = todayMood;
-      } else {
-        entries.push({
-          date: new Date().toISOString().split('T')[0],
-          rating: todayMood
-        });
-      }
-      
-      // Calculate the average
-      const sum = entries.reduce((total, entry) => total + entry.rating, 0);
-      const avg = sum / entries.length;
-      setAverageMood(avg);
-    }
-  }, [todayMood, recentEntries]);
-  
   // Refresh mood data
   const refreshMoodData = async () => {
     try {
+      console.log('Refreshing mood data...');
+      
       // Load today's mood
       const todayEntry = await getTodayMoodEntry();
       if (todayEntry) {
+        console.log('Today\'s mood entry found:', todayEntry);
         setTodayMood(todayEntry.rating);
         setSelectedMood(todayEntry.rating);
       } else {
+        console.log('No mood entry for today');
         setTodayMood(null);
       }
       
       // Load streak
       const currentStreak = await getMoodStreak();
+      console.log('Current streak:', currentStreak);
       setStreak(currentStreak);
       
-      // Load recent entries for average calculation
-      const entries = await getRecentMoodEntries(7);
-      setRecentEntries(entries);
-      
-      // Calculate average mood
-      if (entries.length > 0) {
-        const sum = entries.reduce((total, entry) => total + entry.rating, 0);
-        const avg = sum / entries.length;
-        setAverageMood(avg);
-      } else {
-        setAverageMood(null);
-      }
+      // Load weekly average
+      const weeklyAvg = await getWeeklyAverageMood();
+      console.log('Weekly average:', weeklyAvg);
+      setWeeklyAverage(weeklyAvg);
       
       // Force mood trend graph to refresh
       setTrendGraphKey(prev => prev + 1);
+      
+      console.log('Mood data refresh complete');
     } catch (error) {
       console.error('Error refreshing mood data:', error);
     }
@@ -152,13 +121,11 @@ export default function HomeScreen() {
   // Handle mood change
   const handleMoodChange = (mood: MoodRating) => {
     setSelectedMood(mood);
-    
-    // Immediately update today's mood in the UI
-    setTodayMood(mood);
   };
   
   // Handle mood saved
   const handleMoodSaved = async () => {
+    console.log('Mood saved, refreshing data...');
     // Refresh all mood data when a new mood is saved
     await refreshMoodData();
   };
@@ -262,9 +229,9 @@ export default function HomeScreen() {
                 <Text style={styles.summaryLabel}>Weekly Avg</Text>
                 <Text style={[
                   styles.summaryValue,
-                  { color: getMoodColor(averageMood ? Math.round(averageMood) : null) }
+                  { color: getMoodColor(weeklyAverage ? Math.round(weeklyAverage) : null) }
                 ]}>
-                  {averageMood ? getMoodEmoji(Math.round(averageMood) as MoodRating) : '–'}
+                  {weeklyAverage ? getMoodEmoji(Math.round(weeklyAverage) as MoodRating) : '–'}
                 </Text>
               </View>
               
