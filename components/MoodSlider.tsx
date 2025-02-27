@@ -29,7 +29,6 @@ export default function MoodSlider({
   const [isLoading, setIsLoading] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [isEditable, setIsEditable] = useState(true);
-  const [localValue, setLocalValue] = useState<MoodRating>(value);
   
   // Define mood options
   const moodOptions: MoodOption[] = [
@@ -40,13 +39,8 @@ export default function MoodSlider({
     { rating: 5, label: "Great", emoji: "😄", color: theme.colors.mood5 },
   ];
   
-  // Update local value when prop changes
-  useEffect(() => {
-    setLocalValue(value);
-  }, [value]);
-  
-  // Get current mood option based on local value
-  const currentMood = moodOptions.find(option => option.rating === localValue) || moodOptions[2];
+  // Get current mood option based on value
+  const currentMood = moodOptions.find(option => option.rating === value) || moodOptions[2];
   
   // Animate emoji when mood changes
   useEffect(() => {
@@ -62,7 +56,7 @@ export default function MoodSlider({
         useNativeDriver: true,
       }),
     ]).start();
-  }, [localValue]);
+  }, [value]);
   
   // Load today's mood entry when component mounts
   useEffect(() => {
@@ -70,7 +64,6 @@ export default function MoodSlider({
       try {
         const entry = await getTodayMoodEntry();
         if (entry) {
-          setLocalValue(entry.rating);
           onValueChange(entry.rating);
           setIsSaved(true);
           
@@ -90,17 +83,14 @@ export default function MoodSlider({
     // Convert to integer between 1-5
     const moodRating = Math.round(sliderValue) as MoodRating;
     
-    // Update local state only (don't save to database yet)
-    setLocalValue(moodRating);
+    // Update parent component immediately for UI updates
+    onValueChange(moodRating);
   };
   
   // Handle slider value change (when sliding completes)
   const handleSlidingComplete = async (sliderValue: number) => {
     // Convert to integer between 1-5
     const moodRating = Math.round(sliderValue) as MoodRating;
-    
-    // Update parent component state
-    onValueChange(moodRating);
     
     // Save to database
     try {
@@ -134,7 +124,7 @@ export default function MoodSlider({
         minimumValue={1}
         maximumValue={5}
         step={1}
-        value={localValue}
+        value={value}
         onValueChange={handleSliderChange}
         onSlidingComplete={handleSlidingComplete}
         minimumTrackTintColor={currentMood.color}
@@ -149,7 +139,7 @@ export default function MoodSlider({
             key={option.rating} 
             style={[
               styles.sliderLabel,
-              localValue === option.rating && { color: option.color, fontWeight: theme.fontWeights.bold }
+              value === option.rating && { color: option.color, fontWeight: theme.fontWeights.bold }
             ]}
           >
             {option.rating}

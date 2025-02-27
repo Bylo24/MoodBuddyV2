@@ -22,6 +22,7 @@ export default function HomeScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [streak, setStreak] = useState(0);
   const [weeklyAverage, setWeeklyAverage] = useState<number | null>(null);
+  const [weeklyMoodEntries, setWeeklyMoodEntries] = useState<any[]>([]);
   const [todayMood, setTodayMood] = useState<MoodRating | null>(null);
   const [isSliderDisabled, setIsSliderDisabled] = useState(false);
   
@@ -83,6 +84,45 @@ export default function HomeScreen() {
     };
   }, []);
   
+  // Calculate weekly average when mood changes
+  useEffect(() => {
+    // If we have weekly entries and a selected mood, calculate the average
+    if (weeklyMoodEntries.length > 0 || selectedMood) {
+      calculateWeeklyAverage();
+    }
+  }, [selectedMood, weeklyMoodEntries]);
+  
+  // Calculate weekly average based on entries and current selected mood
+  const calculateWeeklyAverage = () => {
+    // Create a copy of weekly entries
+    const entries = [...weeklyMoodEntries];
+    
+    // Get today's date in YYYY-MM-DD format
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Find if today's entry is already in the list
+    const todayIndex = entries.findIndex(entry => entry.date === today);
+    
+    // If today's entry exists, update it; otherwise add it
+    if (todayIndex >= 0) {
+      entries[todayIndex].rating = selectedMood;
+    } else {
+      entries.push({
+        date: today,
+        rating: selectedMood
+      });
+    }
+    
+    // Calculate the average
+    if (entries.length > 0) {
+      const sum = entries.reduce((total, entry) => total + entry.rating, 0);
+      const avg = sum / entries.length;
+      setWeeklyAverage(avg);
+    } else {
+      setWeeklyAverage(null);
+    }
+  };
+  
   // Refresh mood data
   const refreshMoodData = async () => {
     try {
@@ -104,6 +144,11 @@ export default function HomeScreen() {
       console.log('Current streak:', currentStreak);
       setStreak(currentStreak);
       
+      // Load weekly entries
+      const weeklyEntries = await getCurrentWeekMoodEntries();
+      console.log('Weekly entries:', weeklyEntries);
+      setWeeklyMoodEntries(weeklyEntries);
+      
       // Load weekly average
       const weeklyAvg = await getWeeklyAverageMood();
       console.log('Weekly average:', weeklyAvg);
@@ -120,7 +165,11 @@ export default function HomeScreen() {
   
   // Handle mood change
   const handleMoodChange = (mood: MoodRating) => {
+    console.log('Mood changed to:', mood);
     setSelectedMood(mood);
+    
+    // Immediately update today's mood in the UI
+    setTodayMood(mood);
   };
   
   // Handle mood saved
