@@ -91,7 +91,7 @@ export default function HomeScreen({ onLogout }: HomeScreenProps) {
   
   // Calculate weekly average when mood changes
   useEffect(() => {
-    // If we have weekly entries and a selected mood, calculate the average
+    // If we have weekly entries, calculate the average
     if (weeklyMoodEntries.length > 0) {
       calculateWeeklyAverage();
     }
@@ -176,7 +176,9 @@ export default function HomeScreen({ onLogout }: HomeScreenProps) {
     setSelectedMood(mood);
     
     // Immediately update today's mood in the UI
-    setTodayMood(mood);
+    if (mood !== null) {
+      setTodayMood(mood);
+    }
   };
   
   // Handle mood saved
@@ -259,7 +261,7 @@ export default function HomeScreen({ onLogout }: HomeScreenProps) {
           <MoodSlider 
             value={selectedMood} 
             onValueChange={handleMoodChange}
-            onMoodSaved={handleMoodSaved} // Add the callback
+            onMoodSaved={handleMoodSaved}
             disabled={isSliderDisabled}
           />
         </View>

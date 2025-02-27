@@ -66,16 +66,21 @@ export default function MoodSlider({
   useEffect(() => {
     const loadTodayMood = async () => {
       try {
+        console.log('Loading today\'s mood entry...');
         const entry = await getTodayMoodEntry();
+        
         if (entry) {
+          console.log('Found mood entry for today:', entry);
           onValueChange(entry.rating);
           setIsSaved(true);
           
           // Check if the entry is editable (today's entry)
           setIsEditable(canEditMood(entry.date));
         } else {
+          console.log('No mood entry for today, setting to null');
           // No mood entry for today, set to null
           onValueChange(null);
+          setIsSaved(false);
         }
       } catch (error) {
         console.error('Error loading today\'s mood:', error);
@@ -134,6 +139,8 @@ export default function MoodSlider({
       Alert.alert('Error', 'Failed to save your mood. Please try again.');
     } finally {
       setIsLoading(false);
+      // Reset hasUserMoved after saving
+      setHasUserMoved(false);
     }
   };
   
@@ -194,13 +201,13 @@ export default function MoodSlider({
         
         {isLoading ? (
           <Text style={styles.savingText}>Saving your mood...</Text>
-        ) : isSaved && value && (
+        ) : isSaved && value ? (
           <Text style={styles.savedText}>
             {isEditable 
               ? "Today's mood is saved" 
               : "This mood is locked and can't be changed"}
           </Text>
-        )}
+        ) : null}
       </View>
     </View>
   );
