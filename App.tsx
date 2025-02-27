@@ -23,12 +23,12 @@ export default function App() {
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         console.log('User signed in, updating UI');
         setIsLoggedIn(true);
+        setIsLoading(false);
       } else if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
         console.log('User signed out, updating UI');
         setIsLoggedIn(false);
+        setIsLoading(false);
       }
-      
-      setIsLoading(false);
     });
     
     return () => {

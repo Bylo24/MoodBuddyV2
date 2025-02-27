@@ -1,5 +1,4 @@
 import { supabase } from '../utils/supabaseClient';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Check if user is authenticated
 export const isAuthenticated = async (): Promise<boolean> => {
@@ -51,63 +50,26 @@ export const signInWithEmail = async (email: string, password: string) => {
 export const signUpWithEmail = async (email: string, password: string) => {
   console.log('Attempting to sign up with email:', email);
   try {
-    // First, try to sign up
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+    // Create a new account
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: {
-        // Skip email verification
-        emailRedirectTo: null,
-        data: {
-          name: email.split('@')[0], // Use part of email as name
-        }
-      },
     });
     
-    if (signUpError) {
-      console.error('Sign up error:', signUpError.message);
-      throw signUpError;
+    if (error) {
+      console.error('Sign up error:', error.message);
+      throw error;
     }
     
-    console.log('Sign up response:', signUpData);
+    console.log('Sign up response:', data);
     
-    // If we have a session, login was successful
-    if (signUpData.session) {
-      console.log('Sign up successful with immediate session:', signUpData.user?.id);
-      return signUpData;
+    // If we have a user but no session, try to sign in immediately
+    if (data.user && !data.session) {
+      console.log('User created but no session, attempting immediate sign in');
+      return await signInWithEmail(email, password);
     }
     
-    // If no session but user was created, try to sign in immediately
-    if (signUpData.user) {
-      console.log('User created, attempting immediate sign in');
-      
-      // Wait a moment for the account to be fully created
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Try to sign in
-      try {
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        
-        if (signInError) {
-          console.error('Immediate sign in error:', signInError.message);
-          // Return the sign up data anyway
-          return signUpData;
-        }
-        
-        console.log('Immediate sign in successful');
-        return signInData;
-      } catch (signInErr) {
-        console.error('Error during immediate sign in:', signInErr);
-        // Return the sign up data anyway
-        return signUpData;
-      }
-    }
-    
-    // If we get here, something unexpected happened
-    throw new Error('Failed to create user account');
+    return data;
   } catch (error: any) {
     console.error('Error signing up:', error.message || error);
     throw error;
@@ -124,7 +86,6 @@ export const signOut = async () => {
       throw error;
     }
     console.log('Sign out successful');
-    await clearAuthState();
   } catch (error: any) {
     console.error('Error signing out:', error.message || error);
     throw error;
@@ -135,9 +96,7 @@ export const signOut = async () => {
 export const resetPassword = async (email: string) => {
   console.log('Attempting to reset password for:', email);
   try {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: 'moodbuddy://auth/reset-password',
-    });
+    const { error } = await supabase.auth.resetPasswordForEmail(email);
     
     if (error) {
       console.error('Password reset error:', error.message);
@@ -148,61 +107,5 @@ export const resetPassword = async (email: string) => {
   } catch (error: any) {
     console.error('Error resetting password:', error.message || error);
     throw error;
-  }
-};
-
-// Update password
-export const updatePassword = async (password: string) => {
-  console.log('Attempting to update password');
-  try {
-    const { error } = await supabase.auth.updateUser({
-      password,
-    });
-    
-    if (error) {
-      console.error('Password update error:', error.message);
-      throw error;
-    }
-    
-    console.log('Password updated successfully');
-  } catch (error: any) {
-    console.error('Error updating password:', error.message || error);
-    throw error;
-  }
-};
-
-// Store auth state in AsyncStorage
-export const storeAuthState = async (session: any) => {
-  try {
-    await AsyncStorage.setItem('auth-session', JSON.stringify(session));
-    console.log('Auth state stored in AsyncStorage');
-  } catch (error) {
-    console.error('Error storing auth state:', error);
-  }
-};
-
-// Get auth state from AsyncStorage
-export const getAuthState = async () => {
-  try {
-    const sessionStr = await AsyncStorage.getItem('auth-session');
-    if (sessionStr) {
-      console.log('Auth state retrieved from AsyncStorage');
-      return JSON.parse(sessionStr);
-    }
-    console.log('No auth state found in AsyncStorage');
-    return null;
-  } catch (error) {
-    console.error('Error getting auth state:', error);
-    return null;
-  }
-};
-
-// Clear auth state from AsyncStorage
-export const clearAuthState = async () => {
-  try {
-    await AsyncStorage.removeItem('auth-session');
-    console.log('Auth state cleared from AsyncStorage');
-  } catch (error) {
-    console.error('Error clearing auth state:', error);
   }
 };

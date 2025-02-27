@@ -82,16 +82,21 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
           console.log('Sign up successful with session, proceeding to app');
           onLogin();
         } else {
-          // Show confirmation message and switch to login
-          Alert.alert(
-            'Account Created',
-            'Your account has been created. Please log in.',
-            [{ text: 'OK', onPress: () => {
+          // If no session but user was created, try to sign in
+          if (result.user) {
+            console.log('User created, attempting to sign in');
+            try {
+              await signInWithEmail(email, password);
+              console.log('Sign in after signup successful');
+              onLogin();
+            } catch (signInError: any) {
+              console.error('Error signing in after signup:', signInError);
+              setErrorMessage('Account created but unable to sign in automatically. Please try signing in.');
               setIsSignUp(false);
-              // Keep the email but clear the password
-              setPassword('');
-            }}]
-          );
+            }
+          } else {
+            setErrorMessage('Failed to create account. Please try again.');
+          }
         }
       } else {
         console.log('Starting sign in process...');
