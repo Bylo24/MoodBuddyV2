@@ -8,7 +8,7 @@ import QuoteComponent from '../components/QuoteComponent';
 import Header from '../components/Header';
 import ProfileModal from '../components/ProfileModal';
 import { MoodRating } from '../types';
-import { getTodayMoodEntry, getRecentMoodEntries, getMoodStreak, getWeeklyAverageMood, getCurrentWeekMoodEntries, getTodayDate } from '../services/moodService';
+import { getTodayMoodEntry, getRecentMoodEntries, getMoodStreak, getWeeklyAverageMood, getCurrentWeekMoodEntries, getTodayDate, formatDate } from '../services/moodService';
 import { getCurrentUser, isAuthenticated } from '../services/authService';
 import { recommendedActivities } from '../data/mockData';
 import { supabase } from '../utils/supabaseClient';
@@ -30,7 +30,7 @@ export default function HomeScreen({ onLogout }: HomeScreenProps) {
   const [weeklyMoodEntries, setWeeklyMoodEntries] = useState<any[]>([]);
   const [todayMood, setTodayMood] = useState<MoodRating | null>(null);
   const [isSliderDisabled, setIsSliderDisabled] = useState(false);
-  const [lastCheckedDate, setLastCheckedDate] = useState<string>(getTodayDate());
+  const [currentDate, setCurrentDate] = useState<string>(getTodayDate());
   
   // State for mood trend graph refresh
   const [trendGraphKey, setTrendGraphKey] = useState(0);
@@ -53,32 +53,69 @@ export default function HomeScreen({ onLogout }: HomeScreenProps) {
         return;
       }
       
-      // Load today's mood
-      const todayEntry = await getTodayMoodEntry();
-      if (todayEntry) {
+      // Get the current date in YYYY-MM-DD format
+      const today = getTodayDate();
+      
+      // Query mood entry for the current date
+      const { data: todayEntry, error: todayError } = await supabase
+        .from('mood_entries')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .eq('date', today)
+        .single();
+      
+      if (todayError) {
+        if (todayError.code !== 'PGRST116') {
+          console.error('Error fetching today\'s mood entry:', todayError);
+        } else {
+          console.log('No mood entry found for today');
+          setTodayMood(null);
+          setSelectedMood(null);
+        }
+      } else if (todayEntry) {
         console.log('Today\'s mood entry found:', todayEntry);
         setTodayMood(todayEntry.rating);
         setSelectedMood(todayEntry.rating);
-      } else {
-        console.log('No mood entry for today');
-        setTodayMood(null);
-        setSelectedMood(null);
       }
       
       // Load streak
-      const currentStreak = await getMoodStreak();
-      console.log('Current streak:', currentStreak);
-      setStreak(currentStreak);
+      const { data: allEntries, error: entriesError } = await supabase
+        .from('mood_entries')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .order('date', { ascending: false });
       
-      // Load weekly entries
-      const weeklyEntries = await getCurrentWeekMoodEntries();
-      console.log('Weekly entries:', weeklyEntries);
-      setWeeklyMoodEntries(weeklyEntries);
-      
-      // Load weekly average
-      const weeklyAvg = await getWeeklyAverageMood();
-      console.log('Weekly average:', weeklyAvg);
-      setWeeklyAverage(weeklyAvg);
+      if (entriesError) {
+        console.error('Error fetching all mood entries:', entriesError);
+      } else {
+        // Calculate streak
+        const currentStreak = calculateStreak(allEntries);
+        console.log('Current streak:', currentStreak);
+        setStreak(currentStreak);
+        
+        // Get weekly entries
+        const now = new Date();
+        const startOfWeek = new Date(now);
+        startOfWeek.setDate(now.getDate() - now.getDay()); // Go back to Sunday
+        const startDate = formatDate(startOfWeek);
+        
+        const weekEntries = allEntries.filter(entry => 
+          entry.date >= startDate && entry.date <= today
+        );
+        
+        console.log('Weekly entries:', weekEntries);
+        setWeeklyMoodEntries(weekEntries);
+        
+        // Calculate weekly average
+        if (weekEntries.length > 0) {
+          const sum = weekEntries.reduce((total, entry) => total + entry.rating, 0);
+          const avg = sum / weekEntries.length;
+          console.log('Weekly average:', avg);
+          setWeeklyAverage(avg);
+        } else {
+          setWeeklyAverage(null);
+        }
+      }
       
       // Force mood trend graph to refresh
       setTrendGraphKey(prev => prev + 1);
@@ -88,6 +125,59 @@ export default function HomeScreen({ onLogout }: HomeScreenProps) {
       console.error('Error refreshing mood data:', error);
     }
   }, []);
+  
+  // Calculate streak from mood entries
+  const calculateStreak = (entries: any[]): number => {
+    if (!entries || entries.length === 0) return 0;
+    
+    // Sort entries by date (newest first)
+    const sortedEntries = [...entries].sort((a, b) => {
+      return new Date(b.date).getTime() - new Date(a.date).getTime();
+    });
+    
+    // Get today's date
+    const today = getTodayDate();
+    
+    // Get yesterday's date
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = formatDate(yesterday);
+    
+    // Check if the most recent entry is from today or yesterday
+    const mostRecentEntry = sortedEntries[0];
+    const mostRecentDate = mostRecentEntry.date;
+    
+    // If most recent entry is older than yesterday, streak is broken
+    if (mostRecentDate !== today && mostRecentDate !== yesterdayStr) {
+      return 0;
+    }
+    
+    // Start counting streak
+    let streak = 1;
+    let currentDate = new Date(mostRecentDate);
+    
+    // Create a map of dates with entries for faster lookup
+    const dateMap = new Map();
+    for (const entry of entries) {
+      dateMap.set(entry.date, true);
+    }
+    
+    // Loop through previous days to find consecutive entries
+    for (let i = 1; i <= 365; i++) { // Check up to a year back
+      // Move to previous day
+      currentDate.setDate(currentDate.getDate() - 1);
+      const dateStr = formatDate(currentDate);
+      
+      // Check if there's an entry for this date
+      if (dateMap.has(dateStr)) {
+        streak++;
+      } else {
+        break;
+      }
+    }
+    
+    return streak;
+  };
   
   // Load user data and mood information
   useEffect(() => {
@@ -112,8 +202,8 @@ export default function HomeScreen({ onLogout }: HomeScreenProps) {
           // Load mood data
           await refreshMoodData();
           
-          // Set the last checked date
-          setLastCheckedDate(getTodayDate());
+          // Set the current date
+          setCurrentDate(getTodayDate());
         }
       } catch (error) {
         console.error('Error loading user data:', error);
@@ -145,76 +235,32 @@ export default function HomeScreen({ onLogout }: HomeScreenProps) {
     const subscription = AppState.addEventListener('change', nextAppState => {
       if (nextAppState === 'active') {
         // App has come to the foreground
-        const currentDate = getTodayDate();
+        const today = getTodayDate();
         
-        // Check if the date has changed since last check
-        if (currentDate !== lastCheckedDate) {
-          console.log('Date has changed since last check. Resetting mood selection.');
-          setSelectedMood(null);
-          setTodayMood(null);
-          setLastCheckedDate(currentDate);
+        // Check if the date has changed
+        if (today !== currentDate) {
+          console.log('Date has changed. Updating current date and refreshing data.');
+          setCurrentDate(today);
+          refreshMoodData();
         }
         
         // Refresh quote
         setQuoteKey(Date.now());
-        
-        // Also refresh mood data
-        refreshMoodData();
       }
     });
 
     return () => {
       subscription.remove();
     };
-  }, [lastCheckedDate, refreshMoodData]);
-  
-  // Calculate weekly average when mood changes
-  useEffect(() => {
-    // If we have weekly entries, calculate the average
-    if (weeklyMoodEntries.length > 0) {
-      calculateWeeklyAverage();
-    }
-  }, [selectedMood, weeklyMoodEntries]);
-  
-  // Calculate weekly average based on entries and current selected mood
-  const calculateWeeklyAverage = () => {
-    // Create a copy of weekly entries
-    const entries = [...weeklyMoodEntries];
-    
-    // Get today's date in YYYY-MM-DD format
-    const today = getTodayDate();
-    
-    // Find if today's entry is already in the list
-    const todayIndex = entries.findIndex(entry => entry.date === today);
-    
-    // If today's entry exists and we have a selected mood, update it
-    if (todayIndex >= 0 && selectedMood !== null) {
-      entries[todayIndex].rating = selectedMood;
-    } else if (selectedMood !== null) {
-      // If we have a selected mood but no entry for today, add it
-      entries.push({
-        date: today,
-        rating: selectedMood
-      });
-    }
-    
-    // Calculate the average
-    if (entries.length > 0) {
-      const sum = entries.reduce((total, entry) => total + entry.rating, 0);
-      const avg = sum / entries.length;
-      setWeeklyAverage(avg);
-    } else {
-      setWeeklyAverage(null);
-    }
-  };
+  }, [currentDate, refreshMoodData]);
   
   // Handle mood change
   const handleMoodChange = (mood: MoodRating | null) => {
     console.log('Mood changed to:', mood);
     setSelectedMood(mood);
     
-    // Immediately update today's mood in the UI
-    if (mood !== null) {
+    // Immediately update today's mood in the UI if it's today
+    if (mood !== null && currentDate === getTodayDate()) {
       setTodayMood(mood);
     }
   };
@@ -301,6 +347,7 @@ export default function HomeScreen({ onLogout }: HomeScreenProps) {
             onValueChange={handleMoodChange}
             onMoodSaved={handleMoodSaved}
             disabled={isSliderDisabled}
+            date={currentDate}
           />
         </View>
         

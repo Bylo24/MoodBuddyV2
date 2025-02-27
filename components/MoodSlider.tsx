@@ -3,7 +3,7 @@ import { StyleSheet, Text, View, Animated, Alert, ToastAndroid, Platform } from 
 import Slider from '@react-native-community/slider';
 import { MoodRating } from '../types';
 import { theme } from '../theme/theme';
-import { getTodayMoodEntry, saveTodayMood, isToday, canEditMood } from '../services/moodService';
+import { getTodayMoodEntry, saveTodayMood, isToday, canEditMood, formatDate } from '../services/moodService';
 import { supabase } from '../utils/supabaseClient';
 
 interface MoodSliderProps {
@@ -11,6 +11,7 @@ interface MoodSliderProps {
   onValueChange: (value: MoodRating | null) => void;
   onMoodSaved?: () => void; // Callback for when mood is saved
   disabled?: boolean;
+  date?: string; // Optional date parameter, defaults to today
 }
 
 interface MoodOption {
@@ -24,7 +25,8 @@ export default function MoodSlider({
   value, 
   onValueChange,
   onMoodSaved,
-  disabled = false
+  disabled = false,
+  date = formatDate(new Date()) // Default to today's date
 }: MoodSliderProps) {
   const [scaleAnim] = useState(new Animated.Value(1));
   const [isLoading, setIsLoading] = useState(false);
@@ -32,6 +34,7 @@ export default function MoodSlider({
   const [isEditable, setIsEditable] = useState(true);
   const [hasUserMoved, setHasUserMoved] = useState(false);
   const initialLoadRef = useRef(true);
+  const moodFetchedRef = useRef(false);
   
   // Define mood options
   const moodOptions: MoodOption[] = [
@@ -74,11 +77,13 @@ export default function MoodSlider({
     }
   }, [value]);
   
-  // Load today's mood entry when component mounts
+  // Load mood entry for the specified date when component mounts or date changes
   useEffect(() => {
-    const loadTodayMood = async () => {
+    const loadMoodForDate = async () => {
+      if (moodFetchedRef.current) return;
+      
       try {
-        console.log('Loading today\'s mood entry...');
+        console.log(`Loading mood entry for date: ${date}...`);
         setIsLoading(true);
         
         // Check if user is authenticated
@@ -93,46 +98,46 @@ export default function MoodSlider({
           return;
         }
         
-        const entry = await getTodayMoodEntry();
+        // Get mood entry for the specified date
+        const { data, error } = await supabase
+          .from('mood_entries')
+          .select('*')
+          .eq('user_id', session.user.id)
+          .eq('date', date)
+          .single();
         
-        if (entry) {
-          console.log('Found mood entry for today:', entry);
-          onValueChange(entry.rating);
+        if (error) {
+          if (error.code === 'PGRST116') {
+            // No rows returned - this is not an error for us
+            console.log(`No mood entry found for date: ${date}`);
+            onValueChange(null);
+            setIsSaved(false);
+          } else {
+            console.error('Error fetching mood entry:', error);
+          }
+        } else if (data) {
+          console.log(`Found mood entry for date ${date}:`, data);
+          onValueChange(data.rating);
           setIsSaved(true);
           
           // Check if the entry is editable (today's entry)
-          setIsEditable(canEditMood(entry.date));
-        } else {
-          console.log('No mood entry for today, setting to null');
-          // No mood entry for today, set to null
-          onValueChange(null);
-          setIsSaved(false);
+          setIsEditable(isToday(date));
         }
+        
+        moodFetchedRef.current = true;
       } catch (error) {
-        console.error('Error loading today\'s mood:', error);
+        console.error(`Error loading mood for date ${date}:`, error);
       } finally {
         setIsLoading(false);
         initialLoadRef.current = false;
       }
     };
     
-    loadTodayMood();
+    // Reset the fetch flag when date changes
+    moodFetchedRef.current = false;
+    loadMoodForDate();
     
-    // Listen for auth state changes
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        console.log('Auth state changed, reloading mood data');
-        loadTodayMood();
-      }
-    });
-    
-    return () => {
-      // Clean up auth listener
-      if (authListener && authListener.subscription) {
-        authListener.subscription.unsubscribe();
-      }
-    };
-  }, []);
+  }, [date, onValueChange]);
   
   // Handle slider value change (while sliding)
   const handleSliderChange = (sliderValue: number) => {
@@ -171,15 +176,61 @@ export default function MoodSlider({
         return;
       }
       
-      // Save the mood
-      const savedEntry = await saveTodayMood(moodRating);
+      console.log(`Saving mood ${moodRating} for date ${date}`);
+      
+      // Check if an entry already exists for this date
+      const { data: existingEntry, error: checkError } = await supabase
+        .from('mood_entries')
+        .select('*')
+        .eq('user_id', session.user.id)
+        .eq('date', date)
+        .single();
+      
+      let savedEntry;
+      
+      if (checkError && checkError.code === 'PGRST116') {
+        // No entry exists, create a new one
+        console.log(`Creating new mood entry for date ${date}`);
+        const { data, error } = await supabase
+          .from('mood_entries')
+          .insert([
+            { user_id: session.user.id, date, rating: moodRating }
+          ])
+          .select()
+          .single();
+        
+        if (error) {
+          console.error('Error creating mood entry:', error);
+          Alert.alert('Error', 'Failed to save your mood. Please try again.');
+          return;
+        }
+        
+        savedEntry = data;
+      } else if (existingEntry) {
+        // Entry exists, update it
+        console.log(`Updating existing mood entry for date ${date}:`, existingEntry);
+        const { data, error } = await supabase
+          .from('mood_entries')
+          .update({ rating: moodRating })
+          .eq('id', existingEntry.id)
+          .select()
+          .single();
+        
+        if (error) {
+          console.error('Error updating mood entry:', error);
+          Alert.alert('Error', 'Failed to update your mood. Please try again.');
+          return;
+        }
+        
+        savedEntry = data;
+      }
       
       if (savedEntry) {
         setIsSaved(true);
         console.log('Mood saved successfully:', savedEntry);
         
         // Show success message
-        showSuccessMessage("Mood saved for today!");
+        showSuccessMessage(`Mood saved for ${isToday(date) ? 'today' : date}!`);
         
         // Call the onMoodSaved callback to refresh parent component data
         if (onMoodSaved) {
@@ -203,7 +254,9 @@ export default function MoodSlider({
     <View style={styles.container}>
       {value === null ? (
         <View style={styles.emptyStateContainer}>
-          <Text style={styles.emptyStateText}>How are you feeling today?</Text>
+          <Text style={styles.emptyStateText}>
+            {isToday(date) ? 'How are you feeling today?' : `How did you feel on ${date}?`}
+          </Text>
           <Text style={styles.emptyStateSubText}>Move the slider to select your mood</Text>
         </View>
       ) : null}
@@ -262,10 +315,16 @@ export default function MoodSlider({
         ) : isSaved && value ? (
           <Text style={styles.savedText}>
             {isEditable 
-              ? "Today's mood is saved" 
-              : "This mood is locked and can't be changed"}
+              ? `Mood saved for ${isToday(date) ? 'today' : date}` 
+              : `This mood is locked and can't be changed`}
           </Text>
         ) : null}
+        
+        {!isEditable && (
+          <Text style={styles.lockedText}>
+            Past entries cannot be modified
+          </Text>
+        )}
       </View>
     </View>
   );
@@ -324,6 +383,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: theme.colors.primary,
     marginTop: 8,
+    fontStyle: 'italic',
+  },
+  lockedText: {
+    fontSize: 12,
+    color: theme.colors.error,
+    marginTop: 4,
     fontStyle: 'italic',
   },
   emptyStateContainer: {
