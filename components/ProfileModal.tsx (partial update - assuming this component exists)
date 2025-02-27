@@ -1,0 +1,252 @@
+import React, { useState, useEffect } from 'react';
+import { 
+  StyleSheet, 
+  Text, 
+  View, 
+  Modal, 
+  TouchableOpacity, 
+  TextInput,
+  Alert
+} from 'react-native';
+import { theme } from '../theme/theme';
+import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+interface ProfileModalProps {
+  visible: boolean;
+  onClose: () => void;
+  onLogout: () => void;
+}
+
+export default function ProfileModal({ visible, onClose, onLogout }: ProfileModalProps) {
+  const [userName, setUserName] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+  const [newName, setNewName] = useState('');
+  
+  useEffect(() => {
+    if (visible) {
+      loadUserName();
+    }
+  }, [visible]);
+  
+  const loadUserName = async () => {
+    try {
+      const storedName = await AsyncStorage.getItem('user_display_name');
+      if (storedName) {
+        setUserName(storedName);
+        setNewName(storedName);
+      }
+    } catch (error) {
+      console.error('Error loading user name:', error);
+    }
+  };
+  
+  const handleSaveName = async () => {
+    if (!newName.trim()) {
+      Alert.alert('Invalid Name', 'Please enter a valid name');
+      return;
+    }
+    
+    try {
+      await AsyncStorage.setItem('user_display_name', newName.trim());
+      setUserName(newName.trim());
+      setIsEditing(false);
+      Alert.alert('Success', 'Your name has been updated');
+    } catch (error) {
+      console.error('Error saving user name:', error);
+      Alert.alert('Error', 'Failed to update your name. Please try again.');
+    }
+  };
+  
+  // Rest of the component...
+  
+  return (
+    <Modal
+      animationType="slide"
+      transparent={true}
+      visible={visible}
+      onRequestClose={onClose}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Your Profile</Text>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <Ionicons name="close" size={24} color={theme.colors.text} />
+            </TouchableOpacity>
+          </View>
+          
+          <View style={styles.profileSection}>
+            <Text style={styles.sectionTitle}>Display Name</Text>
+            
+            {isEditing ? (
+              <View style={styles.editNameContainer}>
+                <TextInput
+                  style={styles.nameInput}
+                  value={newName}
+                  onChangeText={setNewName}
+                  placeholder="Enter your name"
+                  autoCapitalize="words"
+                />
+                <View style={styles.editButtonsRow}>
+                  <TouchableOpacity 
+                    style={[styles.editButton, styles.cancelButton]}
+                    onPress={() => {
+                      setNewName(userName);
+                      setIsEditing(false);
+                    }}
+                  >
+                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.editButton, styles.saveButton]}
+                    onPress={handleSaveName}
+                  >
+                    <Text style={styles.saveButtonText}>Save</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.nameContainer}>
+                <Text style={styles.nameText}>{userName}</Text>
+                <TouchableOpacity 
+                  style={styles.editNameButton}
+                  onPress={() => setIsEditing(true)}
+                >
+                  <Ionicons name="pencil" size={18} color={theme.colors.primary} />
+                  <Text style={styles.editNameText}>Edit</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+          
+          {/* Other profile sections... */}
+          
+          <TouchableOpacity 
+            style={styles.logoutButton}
+            onPress={onLogout}
+          >
+            <Ionicons name="log-out-outline" size={20} color="white" style={styles.logoutIcon} />
+            <Text style={styles.logoutText}>Log Out</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+const styles = StyleSheet.create({
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: theme.colors.background,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: theme.fontWeights.bold,
+    color: theme.colors.text,
+  },
+  closeButton: {
+    padding: 8,
+  },
+  profileSection: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: theme.fontWeights.semibold,
+    color: theme.colors.subtext,
+    marginBottom: 12,
+  },
+  nameContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: theme.colors.card,
+    borderRadius: 12,
+    padding: 16,
+  },
+  nameText: {
+    fontSize: 18,
+    color: theme.colors.text,
+    fontWeight: theme.fontWeights.medium,
+  },
+  editNameButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  editNameText: {
+    color: theme.colors.primary,
+    marginLeft: 4,
+    fontWeight: theme.fontWeights.medium,
+  },
+  editNameContainer: {
+    backgroundColor: theme.colors.card,
+    borderRadius: 12,
+    padding: 16,
+  },
+  nameInput: {
+    fontSize: 18,
+    color: theme.colors.text,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.colors.border,
+    paddingBottom: 8,
+    marginBottom: 16,
+  },
+  editButtonsRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
+  editButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginLeft: 12,
+  },
+  cancelButton: {
+    backgroundColor: theme.colors.card,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  cancelButtonText: {
+    color: theme.colors.subtext,
+    fontWeight: theme.fontWeights.medium,
+  },
+  saveButton: {
+    backgroundColor: theme.colors.primary,
+  },
+  saveButtonText: {
+    color: 'white',
+    fontWeight: theme.fontWeights.medium,
+  },
+  logoutButton: {
+    backgroundColor: theme.colors.error,
+    borderRadius: 12,
+    height: 50,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  logoutIcon: {
+    marginRight: 8,
+  },
+  logoutText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: theme.fontWeights.bold,
+  },
+});

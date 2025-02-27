@@ -9,11 +9,13 @@ import {
   KeyboardAvoidingView, 
   Platform,
   ScrollView,
-  Keyboard
+  Keyboard,
+  Alert
 } from 'react-native';
 import { theme } from '../theme/theme';
 import { Ionicons } from '@expo/vector-icons';
 import OnboardingProgress from '../components/OnboardingProgress';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface SetupNameScreenProps {
   onComplete: (name: string) => void;
@@ -24,7 +26,7 @@ export default function SetupNameScreen({ onComplete, onSkip }: SetupNameScreenP
   const [name, setName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (!name.trim()) {
       return;
     }
@@ -32,11 +34,46 @@ export default function SetupNameScreen({ onComplete, onSkip }: SetupNameScreenP
     Keyboard.dismiss();
     setIsLoading(true);
     
-    // Simulate a short loading state for better UX
-    setTimeout(() => {
+    try {
+      // Save the name to AsyncStorage
+      const trimmedName = name.trim();
+      await AsyncStorage.setItem('user_display_name', trimmedName);
+      console.log('Saved user name:', trimmedName);
+      
+      // Simulate a short loading state for better UX
+      setTimeout(() => {
+        setIsLoading(false);
+        onComplete(trimmedName);
+      }, 500);
+    } catch (error) {
+      console.error('Error saving name:', error);
+      Alert.alert(
+        'Error',
+        'There was a problem saving your name. Please try again.',
+        [{ text: 'OK' }]
+      );
       setIsLoading(false);
-      onComplete(name.trim());
-    }, 500);
+    }
+  };
+  
+  const handleSkip = async () => {
+    // When skipping, we'll use a default name in the next screen
+    setIsLoading(true);
+    
+    try {
+      // Clear any existing name to ensure we use the default
+      await AsyncStorage.removeItem('user_display_name');
+      console.log('User skipped name setup');
+      
+      setTimeout(() => {
+        setIsLoading(false);
+        onSkip();
+      }, 300);
+    } catch (error) {
+      console.error('Error during skip:', error);
+      setIsLoading(false);
+      onSkip();
+    }
   };
   
   return (
@@ -97,7 +134,7 @@ export default function SetupNameScreen({ onComplete, onSkip }: SetupNameScreenP
           
           <TouchableOpacity 
             style={styles.skipButton}
-            onPress={onSkip}
+            onPress={handleSkip}
             disabled={isLoading}
           >
             <Text style={styles.skipButtonText}>Skip for now</Text>
