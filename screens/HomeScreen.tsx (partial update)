@@ -1,19 +1,11 @@
-// Handle profile modal close
-const handleProfileModalClose = () => {
-  setProfileModalVisible(false);
-  
-  // Refresh data when profile modal is closed (in case settings were changed)
-  refreshMoodData();
-};
-
-// Add this function to handle logout from profile
-const handleProfileLogout = async () => {
-  console.log('Logout triggered from profile');
-  // This will be called by the ProfileScreen when the user logs out
+// Handle profile logout
+const handleProfileLogout = () => {
+  console.log('Logout triggered from profile in HomeScreen');
+  // Call the onLogout prop directly
   onLogout();
 };
 
-// Then update the ProfileModal component in the JSX:
+// Then in the return statement:
 <ProfileModal 
   visible={profileModalVisible} 
   onClose={handleProfileModalClose}

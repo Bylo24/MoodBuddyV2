@@ -30,6 +30,18 @@ export default function ProfileModal({ visible, onClose, onLogout }: ProfileModa
     }
   }, [visible, slideAnim]);
   
+  // Create a direct logout handler
+  const handleLogout = () => {
+    console.log('Logout triggered in ProfileModal');
+    // Close the modal first
+    onClose();
+    // Then call the onLogout callback
+    setTimeout(() => {
+      console.log('Calling onLogout from ProfileModal');
+      onLogout();
+    }, 300);
+  };
+  
   return (
     <Modal
       visible={visible}
@@ -44,7 +56,10 @@ export default function ProfileModal({ visible, onClose, onLogout }: ProfileModa
             { transform: [{ translateY: slideAnim }] }
           ]}
         >
-          <ProfileScreen onClose={onClose} onLogout={onLogout} />
+          <ProfileScreen 
+            onClose={onClose} 
+            onLogout={handleLogout} 
+          />
         </Animated.View>
       </View>
     </Modal>

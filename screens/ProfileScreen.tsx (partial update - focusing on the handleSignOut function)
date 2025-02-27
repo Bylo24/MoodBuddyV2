@@ -1,0 +1,50 @@
+const handleSignOut = async () => {
+  Alert.alert(
+    'Sign Out',
+    'Are you sure you want to sign out?',
+    [
+      {
+        text: 'Cancel',
+        style: 'cancel',
+      },
+      {
+        text: 'Sign Out',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            setIsSigningOut(true);
+            console.log('User confirmed sign out, proceeding...');
+            
+            // Close the modal first
+            onClose();
+            
+            // Wait a moment for the modal to close
+            setTimeout(async () => {
+              try {
+                // Call signOut from authService
+                await signOut();
+                console.log('Sign out successful from ProfileScreen');
+                
+                // Clear user data from AsyncStorage
+                await AsyncStorage.removeItem('user_display_name');
+                console.log('Cleared user data from AsyncStorage');
+                
+                // Call the onLogout callback directly
+                console.log('Calling onLogout callback from ProfileScreen');
+                onLogout();
+              } catch (error) {
+                console.error('Error during sign out:', error);
+                Alert.alert('Error', 'Failed to sign out. Please try again.');
+              }
+            }, 300);
+          } catch (error) {
+            console.error('Error in sign out process:', error);
+            Alert.alert('Error', 'Failed to sign out. Please try again.');
+            setIsSigningOut(false);
+          }
+        },
+      },
+    ],
+    { cancelable: true }
+  );
+};

@@ -1,31 +1,30 @@
 // Handle logout
 const handleLogout = async () => {
+  console.log('handleLogout called in App.tsx');
+  
   try {
-    console.log('Logging out in App.tsx...');
-    setIsLoading(true); // Show loading indicator during logout
+    setIsLoading(true);
+    console.log('Setting loading state to true');
     
-    // Clear any stored user data
+    // Clear user data
     try {
-      // Keep the onboarding status but clear user-specific data
-      // This way the user won't have to go through onboarding again
       await AsyncStorage.removeItem('user_display_name');
-      console.log('Cleared user data from AsyncStorage');
+      console.log('Cleared user_display_name from AsyncStorage');
     } catch (storageError) {
       console.error('Error clearing user data:', storageError);
     }
     
-    // Reset state and navigate to login
+    // Reset state variables
     setUserName('');
+    console.log('Reset userName state');
+    
+    // Force app state to login
+    console.log('Setting appState to login');
     setAppState('login');
-    console.log('App state set to login');
   } catch (error) {
-    console.error('Error in App.tsx logout handler:', error);
-    Alert.alert(
-      'Sign Out Error',
-      'There was a problem signing out. Please try again.',
-      [{ text: 'OK' }]
-    );
+    console.error('Error in handleLogout:', error);
   } finally {
     setIsLoading(false);
+    console.log('Setting loading state to false');
   }
 };
