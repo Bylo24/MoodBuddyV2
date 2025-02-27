@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Alert, ActivityIndicator, ScrollView, Modal } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, Alert, ActivityIndicator, ScrollView, Modal, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { theme } from '../theme/theme';
 import { getCurrentUser } from '../services/authService';
@@ -21,6 +21,11 @@ export default function ProfileScreen({ onClose, onLogout }: ProfileScreenProps)
   const [averageMood, setAverageMood] = useState<number | null>(null);
   const [languageModalVisible, setLanguageModalVisible] = useState(false);
   const [currentLanguage, setCurrentLanguage] = useState('English');
+  
+  // Edit profile states
+  const [editProfileModalVisible, setEditProfileModalVisible] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
   
   // Available languages
   const languages = [
@@ -55,6 +60,8 @@ export default function ProfileScreen({ onClose, onLogout }: ProfileScreenProps)
           } else {
             const name = user.email ? user.email.split('@')[0] : 'User';
             setUserName(name);
+            // Store the name for future use
+            await AsyncStorage.setItem('user_display_name', name);
           }
           
           setEmail(user.email || '');
@@ -149,6 +156,45 @@ export default function ProfileScreen({ onClose, onLogout }: ProfileScreenProps)
     }
   };
   
+  // Open edit profile modal
+  const handleEditProfile = () => {
+    setNewName(userName);
+    setEditProfileModalVisible(true);
+  };
+  
+  // Save profile changes
+  const handleSaveProfile = async () => {
+    if (!newName.trim()) {
+      Alert.alert('Error', 'Name cannot be empty');
+      return;
+    }
+    
+    setIsSavingProfile(true);
+    
+    try {
+      // Save the new name to AsyncStorage
+      await AsyncStorage.setItem('user_display_name', newName.trim());
+      
+      // Update the state
+      setUserName(newName.trim());
+      
+      // Close the modal
+      setEditProfileModalVisible(false);
+      
+      // Show success message
+      Alert.alert(
+        'Profile Updated',
+        'Your profile has been updated successfully.',
+        [{ text: 'OK' }]
+      );
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      Alert.alert('Error', 'Failed to update profile. Please try again.');
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+  
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -202,7 +248,10 @@ export default function ProfileScreen({ onClose, onLogout }: ProfileScreenProps)
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Account</Text>
           
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity 
+            style={styles.menuItem}
+            onPress={handleEditProfile}
+          >
             <Ionicons name="person-outline" size={24} color={theme.colors.text} />
             <Text style={styles.menuItemText}>Edit Profile</Text>
             <Ionicons name="chevron-forward" size={20} color={theme.colors.subtext} />
@@ -277,31 +326,31 @@ export default function ProfileScreen({ onClose, onLogout }: ProfileScreenProps)
         onRequestClose={() => setLanguageModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.languageModalContainer}>
-            <View style={styles.languageModalHeader}>
-              <Text style={styles.languageModalTitle}>Select Language</Text>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Language</Text>
               <TouchableOpacity 
-                style={styles.languageModalCloseButton}
+                style={styles.modalCloseButton}
                 onPress={() => setLanguageModalVisible(false)}
               >
                 <Ionicons name="close" size={24} color={theme.colors.text} />
               </TouchableOpacity>
             </View>
             
-            <ScrollView style={styles.languageList}>
+            <ScrollView style={styles.modalList}>
               {languages.map((language) => (
                 <TouchableOpacity
                   key={language.code}
                   style={[
-                    styles.languageItem,
-                    currentLanguage === language.name && styles.languageItemSelected
+                    styles.modalItem,
+                    currentLanguage === language.name && styles.modalItemSelected
                   ]}
                   onPress={() => handleLanguageSelect(language.code, language.name)}
                 >
                   <Text 
                     style={[
-                      styles.languageItemText,
-                      currentLanguage === language.name && styles.languageItemTextSelected
+                      styles.modalItemText,
+                      currentLanguage === language.name && styles.modalItemTextSelected
                     ]}
                   >
                     {language.name}
@@ -312,6 +361,65 @@ export default function ProfileScreen({ onClose, onLogout }: ProfileScreenProps)
                 </TouchableOpacity>
               ))}
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+      
+      {/* Edit Profile Modal */}
+      <Modal
+        visible={editProfileModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setEditProfileModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Edit Profile</Text>
+              <TouchableOpacity 
+                style={styles.modalCloseButton}
+                onPress={() => setEditProfileModalVisible(false)}
+              >
+                <Ionicons name="close" size={24} color={theme.colors.text} />
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.modalContent}>
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Display Name</Text>
+                <TextInput
+                  style={styles.formInput}
+                  value={newName}
+                  onChangeText={setNewName}
+                  placeholder="Enter your name"
+                  placeholderTextColor={theme.colors.subtext}
+                  autoCapitalize="words"
+                />
+              </View>
+              
+              <View style={styles.formGroup}>
+                <Text style={styles.formLabel}>Email</Text>
+                <View style={styles.disabledInput}>
+                  <Text style={styles.disabledInputText}>{email}</Text>
+                </View>
+                <Text style={styles.formHint}>Email cannot be changed</Text>
+              </View>
+              
+              <TouchableOpacity 
+                style={[
+                  styles.saveButton,
+                  (!newName.trim() || isSavingProfile) && styles.saveButtonDisabled
+                ]}
+                onPress={handleSaveProfile}
+                disabled={!newName.trim() || isSavingProfile}
+              >
+                {isSavingProfile ? (
+                  <ActivityIndicator size="small" color="white" />
+                ) : (
+                  <Text style={styles.saveButtonText}>Save Changes</Text>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
@@ -462,22 +570,22 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: theme.colors.subtext,
   },
-  // Language modal styles
+  // Modal styles
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  languageModalContainer: {
-    width: '80%',
-    maxHeight: '70%',
+  modalContainer: {
+    width: '85%',
+    maxHeight: '80%',
     backgroundColor: theme.colors.background,
     borderRadius: 16,
     overflow: 'hidden',
     ...theme.shadows.large,
   },
-  languageModalHeader: {
+  modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -485,18 +593,18 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.border,
   },
-  languageModalTitle: {
+  modalTitle: {
     fontSize: 18,
     fontWeight: theme.fontWeights.bold,
     color: theme.colors.text,
   },
-  languageModalCloseButton: {
+  modalCloseButton: {
     padding: 4,
   },
-  languageList: {
+  modalList: {
     padding: 8,
   },
-  languageItem: {
+  modalItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -504,15 +612,70 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginVertical: 4,
   },
-  languageItemSelected: {
+  modalItemSelected: {
     backgroundColor: theme.colors.primary + '15',
   },
-  languageItemText: {
+  modalItemText: {
     fontSize: 16,
     color: theme.colors.text,
   },
-  languageItemTextSelected: {
+  modalItemTextSelected: {
     color: theme.colors.primary,
+    fontWeight: theme.fontWeights.semibold,
+  },
+  // Form styles
+  modalContent: {
+    padding: 16,
+  },
+  formGroup: {
+    marginBottom: 16,
+  },
+  formLabel: {
+    fontSize: 16,
+    fontWeight: theme.fontWeights.medium,
+    color: theme.colors.text,
+    marginBottom: 8,
+  },
+  formInput: {
+    backgroundColor: theme.colors.card,
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    color: theme.colors.text,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  disabledInput: {
+    backgroundColor: theme.colors.card,
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    opacity: 0.7,
+  },
+  disabledInputText: {
+    fontSize: 16,
+    color: theme.colors.subtext,
+  },
+  formHint: {
+    fontSize: 12,
+    color: theme.colors.subtext,
+    marginTop: 4,
+    fontStyle: 'italic',
+  },
+  saveButton: {
+    backgroundColor: theme.colors.primary,
+    borderRadius: 8,
+    padding: 14,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  saveButtonDisabled: {
+    backgroundColor: theme.colors.primary + '80',
+  },
+  saveButtonText: {
+    color: 'white',
+    fontSize: 16,
     fontWeight: theme.fontWeights.semibold,
   },
 });
