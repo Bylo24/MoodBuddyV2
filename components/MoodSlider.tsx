@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, Text, View, Animated, Alert } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { MoodRating } from '../types';
@@ -6,8 +6,8 @@ import { theme } from '../theme/theme';
 import { getTodayMoodEntry, saveTodayMood, isToday, canEditMood } from '../services/moodService';
 
 interface MoodSliderProps {
-  value: MoodRating;
-  onValueChange: (value: MoodRating) => void;
+  value: MoodRating | null;
+  onValueChange: (value: MoodRating | null) => void;
   onMoodSaved?: () => void; // Callback for when mood is saved
   disabled?: boolean;
 }
@@ -29,6 +29,8 @@ export default function MoodSlider({
   const [isLoading, setIsLoading] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [isEditable, setIsEditable] = useState(true);
+  const [hasUserMoved, setHasUserMoved] = useState(false);
+  const initialLoadRef = useRef(true);
   
   // Define mood options
   const moodOptions: MoodOption[] = [
@@ -40,22 +42,24 @@ export default function MoodSlider({
   ];
   
   // Get current mood option based on value
-  const currentMood = moodOptions.find(option => option.rating === value) || moodOptions[2];
+  const currentMood = value ? moodOptions.find(option => option.rating === value) : null;
   
   // Animate emoji when mood changes
   useEffect(() => {
-    Animated.sequence([
-      Animated.timing(scaleAnim, {
-        toValue: 1.3,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-      Animated.timing(scaleAnim, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-    ]).start();
+    if (value) {
+      Animated.sequence([
+        Animated.timing(scaleAnim, {
+          toValue: 1.3,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scaleAnim, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
   }, [value]);
   
   // Load today's mood entry when component mounts
@@ -69,9 +73,14 @@ export default function MoodSlider({
           
           // Check if the entry is editable (today's entry)
           setIsEditable(canEditMood(entry.date));
+        } else {
+          // No mood entry for today, set to null
+          onValueChange(null);
         }
       } catch (error) {
         console.error('Error loading today\'s mood:', error);
+      } finally {
+        initialLoadRef.current = false;
       }
     };
     
@@ -83,12 +92,23 @@ export default function MoodSlider({
     // Convert to integer between 1-5
     const moodRating = Math.round(sliderValue) as MoodRating;
     
+    // Mark that user has moved the slider
+    if (!hasUserMoved) {
+      setHasUserMoved(true);
+    }
+    
     // Update parent component immediately for UI updates
     onValueChange(moodRating);
   };
   
   // Handle slider value change (when sliding completes)
   const handleSlidingComplete = async (sliderValue: number) => {
+    // Only save if the user has actively moved the slider
+    if (!hasUserMoved && !initialLoadRef.current) {
+      console.log('Slider not moved by user, not saving');
+      return;
+    }
+    
     // Convert to integer between 1-5
     const moodRating = Math.round(sliderValue) as MoodRating;
     
@@ -119,17 +139,23 @@ export default function MoodSlider({
   
   return (
     <View style={styles.container}>
+      {value === null ? (
+        <View style={styles.emptyStateContainer}>
+          <Text style={styles.emptyStateText}>Move the slider to select your mood</Text>
+        </View>
+      ) : null}
+      
       <Slider
         style={styles.slider}
         minimumValue={1}
         maximumValue={5}
         step={1}
-        value={value}
+        value={value || 3} // Default to middle position visually, but don't save it
         onValueChange={handleSliderChange}
         onSlidingComplete={handleSlidingComplete}
-        minimumTrackTintColor={currentMood.color}
+        minimumTrackTintColor={currentMood?.color || theme.colors.border}
         maximumTrackTintColor={theme.colors.border}
-        thumbTintColor={currentMood.color}
+        thumbTintColor={currentMood?.color || theme.colors.primary}
         disabled={disabled || !isEditable || isLoading}
       />
       
@@ -148,21 +174,27 @@ export default function MoodSlider({
       </View>
       
       <View style={styles.moodDisplay}>
-        <Animated.Text 
-          style={[
-            styles.emoji,
-            { transform: [{ scale: scaleAnim }] }
-          ]}
-        >
-          {currentMood.emoji}
-        </Animated.Text>
-        <Text style={[styles.moodLabel, { color: currentMood.color }]}>
-          {currentMood.label}
-        </Text>
+        {value ? (
+          <>
+            <Animated.Text 
+              style={[
+                styles.emoji,
+                { transform: [{ scale: scaleAnim }] }
+              ]}
+            >
+              {currentMood?.emoji}
+            </Animated.Text>
+            <Text style={[styles.moodLabel, { color: currentMood?.color }]}>
+              {currentMood?.label}
+            </Text>
+          </>
+        ) : (
+          <Text style={styles.noMoodText}>No mood selected</Text>
+        )}
         
         {isLoading ? (
           <Text style={styles.savingText}>Saving your mood...</Text>
-        ) : isSaved && (
+        ) : isSaved && value && (
           <Text style={styles.savedText}>
             {isEditable 
               ? "Today's mood is saved" 
@@ -220,6 +252,20 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: theme.colors.primary,
     marginTop: 8,
+    fontStyle: 'italic',
+  },
+  emptyStateContainer: {
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  emptyStateText: {
+    fontSize: 14,
+    color: theme.colors.subtext,
+    fontStyle: 'italic',
+  },
+  noMoodText: {
+    fontSize: 18,
+    color: theme.colors.subtext,
     fontStyle: 'italic',
   },
 });

@@ -20,8 +20,8 @@ interface HomeScreenProps {
 }
 
 export default function HomeScreen({ onLogout }: HomeScreenProps) {
-  // State for selected mood (just for UI demonstration)
-  const [selectedMood, setSelectedMood] = useState<MoodRating>(3);
+  // State for selected mood (now can be null)
+  const [selectedMood, setSelectedMood] = useState<MoodRating | null>(null);
   const [userName, setUserName] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [streak, setStreak] = useState(0);
@@ -92,7 +92,7 @@ export default function HomeScreen({ onLogout }: HomeScreenProps) {
   // Calculate weekly average when mood changes
   useEffect(() => {
     // If we have weekly entries and a selected mood, calculate the average
-    if (weeklyMoodEntries.length > 0 || selectedMood) {
+    if (weeklyMoodEntries.length > 0) {
       calculateWeeklyAverage();
     }
   }, [selectedMood, weeklyMoodEntries]);
@@ -108,10 +108,11 @@ export default function HomeScreen({ onLogout }: HomeScreenProps) {
     // Find if today's entry is already in the list
     const todayIndex = entries.findIndex(entry => entry.date === today);
     
-    // If today's entry exists, update it; otherwise add it
-    if (todayIndex >= 0) {
+    // If today's entry exists and we have a selected mood, update it
+    if (todayIndex >= 0 && selectedMood !== null) {
       entries[todayIndex].rating = selectedMood;
-    } else {
+    } else if (selectedMood !== null) {
+      // If we have a selected mood but no entry for today, add it
       entries.push({
         date: today,
         rating: selectedMood
@@ -142,6 +143,7 @@ export default function HomeScreen({ onLogout }: HomeScreenProps) {
       } else {
         console.log('No mood entry for today');
         setTodayMood(null);
+        setSelectedMood(null);
       }
       
       // Load streak
@@ -169,7 +171,7 @@ export default function HomeScreen({ onLogout }: HomeScreenProps) {
   };
   
   // Handle mood change
-  const handleMoodChange = (mood: MoodRating) => {
+  const handleMoodChange = (mood: MoodRating | null) => {
     console.log('Mood changed to:', mood);
     setSelectedMood(mood);
     
