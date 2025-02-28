@@ -1,15 +1,7 @@
 import React from 'react';
-import { 
-  StyleSheet, 
-  Text, 
-  View, 
-  TouchableOpacity, 
-  ScrollView,
-  Image,
-  useWindowDimensions
-} from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image } from 'react-native';
 import { theme } from '../theme/theme';
-import { Ionicons } from '@expo/vector-icons';
+import Button from '../components/Button';
 import OnboardingProgress from '../components/OnboardingProgress';
 
 interface IntroductionScreenProps {
@@ -18,89 +10,67 @@ interface IntroductionScreenProps {
 }
 
 export default function IntroductionScreen({ onComplete, userName }: IntroductionScreenProps) {
-  const { width } = useWindowDimensions();
-  const imageSize = width * 0.7;
-  
   return (
     <View style={styles.container}>
-      <ScrollView 
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.header}>
-          <OnboardingProgress steps={3} currentStep={1} />
-          <Text style={styles.title}>Welcome to Mood Buddy, {userName}!</Text>
+      <OnboardingProgress currentStep={2} totalSteps={3} />
+      
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+        <Text style={styles.title}>Welcome to Mood Buddy, {userName || 'Friend'}!</Text>
+        
+        <View style={styles.featureContainer}>
+          <View style={styles.featureIcon}>
+            <Text style={styles.featureEmoji}>📊</Text>
+          </View>
+          <View style={styles.featureTextContainer}>
+            <Text style={styles.featureTitle}>Track Your Mood</Text>
+            <Text style={styles.featureDescription}>
+              Log your daily mood and activities to identify patterns in your emotional wellbeing.
+            </Text>
+          </View>
         </View>
         
-        <View style={styles.imageContainer}>
-          <Image 
-            source={require('../assets/splash-icon.png')} 
-            style={[styles.image, { width: imageSize, height: imageSize }]}
-            resizeMode="contain"
-          />
+        <View style={styles.featureContainer}>
+          <View style={styles.featureIcon}>
+            <Text style={styles.featureEmoji}>🧠</Text>
+          </View>
+          <View style={styles.featureTextContainer}>
+            <Text style={styles.featureTitle}>Gain Insights</Text>
+            <Text style={styles.featureDescription}>
+              Discover connections between your activities and mood to make positive changes.
+            </Text>
+          </View>
         </View>
         
-        <View style={styles.featuresContainer}>
-          <Text style={styles.sectionTitle}>Here's what you can do:</Text>
-          
-          <View style={styles.featureItem}>
-            <View style={styles.featureIcon}>
-              <Ionicons name="happy-outline" size={24} color={theme.colors.primary} />
-            </View>
-            <View style={styles.featureContent}>
-              <Text style={styles.featureTitle}>Track Your Mood</Text>
-              <Text style={styles.featureDescription}>
-                Log how you're feeling daily and see patterns over time
-              </Text>
-            </View>
+        <View style={styles.featureContainer}>
+          <View style={styles.featureIcon}>
+            <Text style={styles.featureEmoji}>💭</Text>
           </View>
-          
-          <View style={styles.featureItem}>
-            <View style={styles.featureIcon}>
-              <Ionicons name="analytics-outline" size={24} color={theme.colors.primary} />
-            </View>
-            <View style={styles.featureContent}>
-              <Text style={styles.featureTitle}>Discover Insights</Text>
-              <Text style={styles.featureDescription}>
-                Get personalized insights about your emotional wellbeing
-              </Text>
-            </View>
+          <View style={styles.featureTextContainer}>
+            <Text style={styles.featureTitle}>Daily Affirmations</Text>
+            <Text style={styles.featureDescription}>
+              Start each day with positive affirmations tailored to your mood history.
+            </Text>
           </View>
-          
-          <View style={styles.featureItem}>
-            <View style={styles.featureIcon}>
-              <Ionicons name="fitness-outline" size={24} color={theme.colors.primary} />
-            </View>
-            <View style={styles.featureContent}>
-              <Text style={styles.featureTitle}>Improve Wellbeing</Text>
-              <Text style={styles.featureDescription}>
-                Find activities tailored to help you feel your best
-              </Text>
-            </View>
+        </View>
+        
+        <View style={styles.featureContainer}>
+          <View style={styles.featureIcon}>
+            <Text style={styles.featureEmoji}>📈</Text>
           </View>
-          
-          <View style={styles.featureItem}>
-            <View style={styles.featureIcon}>
-              <Ionicons name="bulb-outline" size={24} color={theme.colors.primary} />
-            </View>
-            <View style={styles.featureContent}>
-              <Text style={styles.featureTitle}>Daily Inspiration</Text>
-              <Text style={styles.featureDescription}>
-                Start each day with motivational quotes and affirmations
-              </Text>
-            </View>
+          <View style={styles.featureTextContainer}>
+            <Text style={styles.featureTitle}>Track Progress</Text>
+            <Text style={styles.featureDescription}>
+              View your mood trends over time and celebrate your improvements.
+            </Text>
           </View>
         </View>
       </ScrollView>
       
-      <View style={styles.footer}>
-        <TouchableOpacity 
-          style={styles.button}
+      <View style={styles.buttonContainer}>
+        <Button
+          title="Continue"
           onPress={onComplete}
-        >
-          <Text style={styles.buttonText}>Continue</Text>
-          <Ionicons name="arrow-forward" size={20} color="white" style={styles.buttonIcon} />
-        </TouchableOpacity>
+        />
       </View>
     </View>
   );
@@ -109,96 +79,54 @@ export default function IntroductionScreen({ onComplete, userName }: Introductio
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    padding: theme.spacing.md,
+  },
+  scrollView: {
+    flex: 1,
   },
   scrollContent: {
-    flexGrow: 1,
-    padding: 20,
-    paddingBottom: 100, // Extra padding for footer
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 20,
-    marginTop: 20,
+    paddingBottom: theme.spacing.xxl,
   },
   title: {
-    fontSize: 28,
-    fontWeight: theme.fontWeights.bold,
+    fontSize: theme.typography.fontSizes.xl,
+    fontWeight: theme.typography.fontWeights.bold as any,
     color: theme.colors.text,
-    marginBottom: 12,
+    marginVertical: theme.spacing.lg,
     textAlign: 'center',
   },
-  imageContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginVertical: 20,
-  },
-  image: {
-    borderRadius: 20,
-  },
-  featuresContainer: {
-    marginTop: 20,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: theme.fontWeights.bold,
-    color: theme.colors.text,
-    marginBottom: 20,
-  },
-  featureItem: {
+  featureContainer: {
     flexDirection: 'row',
-    marginBottom: 24,
-    alignItems: 'flex-start',
+    backgroundColor: theme.colors.card,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.md,
+    marginBottom: theme.spacing.md,
+    ...theme.shadows.small,
   },
   featureIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: theme.colors.primary + '15',
-    alignItems: 'center',
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: theme.colors.primary + '20', // 20% opacity
     justifyContent: 'center',
-    marginRight: 16,
+    alignItems: 'center',
+    marginRight: theme.spacing.md,
   },
-  featureContent: {
+  featureEmoji: {
+    fontSize: 24,
+  },
+  featureTextContainer: {
     flex: 1,
   },
   featureTitle: {
-    fontSize: 18,
-    fontWeight: theme.fontWeights.semibold,
-    color: theme.colors.text,
-    marginBottom: 4,
+    fontSize: theme.typography.fontSizes.lg,
+    fontWeight: theme.typography.fontWeights.semibold as any,
+    marginBottom: theme.spacing.xs,
   },
   featureDescription: {
-    fontSize: 14,
+    fontSize: theme.typography.fontSizes.md,
     color: theme.colors.subtext,
-    lineHeight: 20,
   },
-  footer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: theme.colors.background,
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    borderTopColor: theme.colors.border,
-  },
-  button: {
-    backgroundColor: theme.colors.primary,
-    borderRadius: 12,
-    height: 56,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...theme.shadows.medium,
-  },
-  buttonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: theme.fontWeights.bold,
-  },
-  buttonIcon: {
-    marginLeft: 8,
+  buttonContainer: {
+    marginTop: theme.spacing.md,
   },
 });

@@ -3,21 +3,20 @@ import { View, StyleSheet } from 'react-native';
 import { theme } from '../theme/theme';
 
 interface OnboardingProgressProps {
-  steps: number;
   currentStep: number;
+  totalSteps: number;
 }
 
-export default function OnboardingProgress({ steps, currentStep }: OnboardingProgressProps) {
+export default function OnboardingProgress({ currentStep, totalSteps }: OnboardingProgressProps) {
   return (
     <View style={styles.container}>
-      {Array.from({ length: steps }).map((_, index) => (
+      {Array.from({ length: totalSteps }).map((_, index) => (
         <View 
           key={index} 
           style={[
-            styles.step,
-            index < currentStep ? styles.completedStep : 
-            index === currentStep ? styles.activeStep : styles.inactiveStep
-          ]}
+            styles.dot, 
+            index < currentStep ? styles.activeDot : styles.inactiveDot
+          ]} 
         />
       ))}
     </View>
@@ -28,23 +27,18 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     justifyContent: 'center',
-    alignItems: 'center',
-    width: '100%',
-    marginVertical: 20,
+    marginVertical: theme.spacing.md,
   },
-  step: {
-    height: 4,
-    borderRadius: 2,
-    marginHorizontal: 4,
-    flex: 1,
+  dot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginHorizontal: 5,
   },
-  activeStep: {
+  activeDot: {
     backgroundColor: theme.colors.primary,
   },
-  completedStep: {
-    backgroundColor: theme.colors.primary,
-  },
-  inactiveStep: {
+  inactiveDot: {
     backgroundColor: theme.colors.border,
   },
 });

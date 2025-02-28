@@ -1,19 +1,7 @@
 import React, { useState } from 'react';
-import { 
-  StyleSheet, 
-  Text, 
-  View, 
-  TextInput, 
-  TouchableOpacity, 
-  ActivityIndicator, 
-  KeyboardAvoidingView, 
-  Platform,
-  ScrollView,
-  Keyboard,
-  Alert
-} from 'react-native';
+import { View, Text, StyleSheet, TextInput, Alert } from 'react-native';
 import { theme } from '../theme/theme';
-import { Ionicons } from '@expo/vector-icons';
+import Button from '../components/Button';
 import OnboardingProgress from '../components/OnboardingProgress';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -25,205 +13,112 @@ interface SetupNameScreenProps {
 export default function SetupNameScreen({ onComplete, onSkip }: SetupNameScreenProps) {
   const [name, setName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  
+
   const handleContinue = async () => {
-    if (!name.trim()) {
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      Alert.alert('Name Required', 'Please enter your name to continue');
       return;
     }
-    
-    Keyboard.dismiss();
+
     setIsLoading(true);
-    
     try {
       // Save the name to AsyncStorage
-      const trimmedName = name.trim();
       await AsyncStorage.setItem('user_display_name', trimmedName);
-      console.log('Saved user name:', trimmedName);
-      
-      // Simulate a short loading state for better UX
-      setTimeout(() => {
-        setIsLoading(false);
-        onComplete(trimmedName);
-      }, 500);
+      onComplete(trimmedName);
     } catch (error) {
       console.error('Error saving name:', error);
-      Alert.alert(
-        'Error',
-        'There was a problem saving your name. Please try again.',
-        [{ text: 'OK' }]
-      );
+      Alert.alert('Error', 'Failed to save your name. Please try again.');
+    } finally {
       setIsLoading(false);
     }
   };
-  
+
   const handleSkip = async () => {
-    // When skipping, we'll use a default name in the next screen
     setIsLoading(true);
-    
     try {
-      // Clear any existing name to ensure we use the default
+      // Clear any existing name
       await AsyncStorage.removeItem('user_display_name');
-      console.log('User skipped name setup');
-      
-      setTimeout(() => {
-        setIsLoading(false);
-        onSkip();
-      }, 300);
-    } catch (error) {
-      console.error('Error during skip:', error);
-      setIsLoading(false);
       onSkip();
+    } catch (error) {
+      console.error('Error in skip flow:', error);
+      onSkip(); // Still proceed with skip
+    } finally {
+      setIsLoading(false);
     }
   };
-  
+
   return (
-    <KeyboardAvoidingView 
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
-    >
-      <ScrollView 
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={styles.header}>
-          <OnboardingProgress steps={3} currentStep={0} />
-          <Text style={styles.title}>What should we call you?</Text>
-          <Text style={styles.subtitle}>
-            This is how you'll appear in the app. You can change this later.
-          </Text>
-        </View>
+    <View style={styles.container}>
+      <OnboardingProgress currentStep={1} totalSteps={3} />
+      
+      <View style={styles.content}>
+        <Text style={styles.title}>What should we call you?</Text>
+        <Text style={styles.subtitle}>
+          This helps us personalize your experience
+        </Text>
         
-        <View style={styles.formContainer}>
-          <View style={styles.inputContainer}>
-            <Ionicons name="person-outline" size={20} color={theme.colors.subtext} style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="Your name"
-              placeholderTextColor={theme.colors.subtext}
-              value={name}
-              onChangeText={setName}
-              autoCapitalize="words"
-              autoComplete="name"
-              textContentType="name"
-              autoFocus
-              returnKeyType="done"
-              onSubmitEditing={handleContinue}
-            />
-            {name.length > 0 && (
-              <TouchableOpacity 
-                style={styles.clearButton}
-                onPress={() => setName('')}
-              >
-                <Ionicons name="close-circle" size={20} color={theme.colors.subtext} />
-              </TouchableOpacity>
-            )}
-          </View>
-          
-          <TouchableOpacity 
-            style={[styles.button, !name.trim() && styles.buttonDisabled]}
+        <TextInput
+          style={styles.input}
+          placeholder="Enter your name"
+          value={name}
+          onChangeText={setName}
+          autoFocus
+          maxLength={30}
+        />
+        
+        <View style={styles.buttonContainer}>
+          <Button
+            title="Continue"
             onPress={handleContinue}
-            disabled={isLoading || !name.trim()}
-          >
-            {isLoading ? (
-              <ActivityIndicator color="white" />
-            ) : (
-              <Text style={styles.buttonText}>Continue</Text>
-            )}
-          </TouchableOpacity>
+            isLoading={isLoading}
+          />
           
-          <TouchableOpacity 
-            style={styles.skipButton}
+          <Button
+            title="Skip for now"
             onPress={handleSkip}
-            disabled={isLoading}
-          >
-            <Text style={styles.skipButtonText}>Skip for now</Text>
-          </TouchableOpacity>
+            variant="secondary"
+            isLoading={isLoading}
+          />
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    padding: theme.spacing.md,
   },
-  scrollContent: {
-    flexGrow: 1,
-    padding: 20,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 40,
-    marginTop: 20,
+  content: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingBottom: 100, // Offset to center content better
   },
   title: {
-    fontSize: 28,
-    fontWeight: theme.fontWeights.bold,
+    fontSize: theme.typography.fontSizes.xxl,
+    fontWeight: theme.typography.fontWeights.bold as any,
     color: theme.colors.text,
-    marginBottom: 12,
+    marginBottom: theme.spacing.sm,
     textAlign: 'center',
   },
   subtitle: {
-    fontSize: 16,
+    fontSize: theme.typography.fontSizes.md,
     color: theme.colors.subtext,
+    marginBottom: theme.spacing.xl,
     textAlign: 'center',
-    marginHorizontal: 20,
-    lineHeight: 22,
-  },
-  formContainer: {
-    width: '100%',
-    maxWidth: 400,
-    alignSelf: 'center',
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: theme.colors.card,
-    borderRadius: 12,
-    marginBottom: 24,
-    paddingHorizontal: 16,
-    height: 56,
-    ...theme.shadows.small,
-  },
-  inputIcon: {
-    marginRight: 12,
   },
   input: {
-    flex: 1,
-    height: '100%',
-    color: theme.colors.text,
-    fontSize: 16,
+    backgroundColor: theme.colors.card,
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.md,
+    fontSize: theme.typography.fontSizes.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    marginBottom: theme.spacing.xl,
   },
-  clearButton: {
-    padding: 8,
-  },
-  button: {
-    backgroundColor: theme.colors.primary,
-    borderRadius: 12,
-    height: 56,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 8,
-    ...theme.shadows.medium,
-  },
-  buttonDisabled: {
-    backgroundColor: theme.colors.primary + '80', // 50% opacity
-  },
-  buttonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: theme.fontWeights.bold,
-  },
-  skipButton: {
-    alignItems: 'center',
-    marginTop: 16,
-    padding: 8,
-  },
-  skipButtonText: {
-    color: theme.colors.subtext,
-    fontSize: 14,
+  buttonContainer: {
+    gap: theme.spacing.md,
   },
 });

@@ -1,64 +1,100 @@
 import React from 'react';
-import { StyleSheet, Text, Pressable, PressableProps } from 'react-native';
+import { TouchableOpacity, Text, StyleSheet, ActivityIndicator } from 'react-native';
+import { theme } from '../theme/theme';
 
-interface ButtonProps extends PressableProps {
+interface ButtonProps {
   title: string;
-  variant?: 'primary' | 'secondary';
+  onPress: () => void;
+  variant?: 'primary' | 'secondary' | 'outline';
+  isLoading?: boolean;
+  disabled?: boolean;
 }
 
 export default function Button({ 
   title, 
+  onPress, 
   variant = 'primary', 
-  style, 
-  ...rest 
+  isLoading = false,
+  disabled = false
 }: ButtonProps) {
+  const getButtonStyle = () => {
+    switch (variant) {
+      case 'secondary':
+        return styles.secondaryButton;
+      case 'outline':
+        return styles.outlineButton;
+      default:
+        return styles.primaryButton;
+    }
+  };
+
+  const getTextStyle = () => {
+    switch (variant) {
+      case 'secondary':
+        return styles.secondaryText;
+      case 'outline':
+        return styles.outlineText;
+      default:
+        return styles.primaryText;
+    }
+  };
+
   return (
-    <Pressable 
-      style={({pressed}) => [
-        styles.button, 
-        variant === 'primary' ? styles.primaryButton : styles.secondaryButton,
-        pressed && styles.pressed,
-        style
+    <TouchableOpacity
+      style={[
+        styles.button,
+        getButtonStyle(),
+        (disabled || isLoading) && styles.disabledButton
       ]}
-      {...rest}
+      onPress={onPress}
+      disabled={disabled || isLoading}
     >
-      <Text style={[
-        styles.text,
-        variant === 'primary' ? styles.primaryText : styles.secondaryText
-      ]}>
-        {title}
-      </Text>
-    </Pressable>
+      {isLoading ? (
+        <ActivityIndicator 
+          size="small" 
+          color={variant === 'primary' ? 'white' : theme.colors.primary} 
+        />
+      ) : (
+        <Text style={[styles.text, getTextStyle()]}>{title}</Text>
+      )}
+    </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   button: {
-    paddingVertical: 12,
-    paddingHorizontal: 32,
-    borderRadius: 8,
+    paddingVertical: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+    borderRadius: theme.borderRadius.md,
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 50,
   },
   primaryButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: theme.colors.primary,
   },
   secondaryButton: {
     backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: '#007AFF',
   },
-  pressed: {
-    opacity: 0.8,
+  outlineButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
   text: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: theme.typography.fontSizes.md,
+    fontWeight: theme.typography.fontWeights.semibold as any,
   },
   primaryText: {
     color: 'white',
   },
   secondaryText: {
-    color: '#007AFF',
+    color: theme.colors.primary,
+  },
+  outlineText: {
+    color: theme.colors.primary,
   },
 });

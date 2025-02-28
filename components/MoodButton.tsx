@@ -1,58 +1,52 @@
 import React from 'react';
-import { StyleSheet, Text, Pressable, View, Animated } from 'react-native';
-import { MoodRating } from '../types';
+import { TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import { theme } from '../theme/theme';
 
 interface MoodButtonProps {
-  rating: MoodRating;
-  label: string;
-  emoji: string;
-  selected?: boolean;
-  onPress?: () => void;
+  rating: number;
+  onPress: () => void;
 }
 
-export default function MoodButton({ 
-  rating, 
-  label, 
-  emoji, 
-  selected = false, 
-  onPress 
-}: MoodButtonProps) {
-  // Get mood color based on rating
-  const getMoodColor = (rating: MoodRating) => {
+export default function MoodButton({ rating, onPress }: MoodButtonProps) {
+  const getMoodIcon = () => {
     switch(rating) {
-      case 1: return theme.colors.mood1;
-      case 2: return theme.colors.mood2;
-      case 3: return theme.colors.mood3;
-      case 4: return theme.colors.mood4;
-      case 5: return theme.colors.mood5;
-      default: return theme.colors.primary;
+      case 1: return 'sentiment-very-dissatisfied';
+      case 2: return 'sentiment-dissatisfied';
+      case 3: return 'sentiment-neutral';
+      case 4: return 'sentiment-satisfied';
+      case 5: return 'sentiment-very-satisfied';
+      default: return 'sentiment-neutral';
+    }
+  };
+  
+  const getMoodColor = () => {
+    return theme.colors.moodColors[rating as keyof typeof theme.colors.moodColors];
+  };
+  
+  const getMoodText = () => {
+    switch(rating) {
+      case 1: return 'Very Bad';
+      case 2: return 'Bad';
+      case 3: return 'Okay';
+      case 4: return 'Good';
+      case 5: return 'Very Good';
+      default: return 'Neutral';
     }
   };
 
   return (
-    <Pressable
-      style={({ pressed }) => [
-        styles.container,
-        selected && [styles.selected, { backgroundColor: getMoodColor(rating) }],
-        pressed && styles.pressed
-      ]}
+    <TouchableOpacity 
+      style={[styles.container, { backgroundColor: getMoodColor() + '20' }]} // 20% opacity
       onPress={onPress}
     >
-      <Text style={[
-        styles.emoji,
-        selected && styles.selectedEmoji,
-        { transform: [{ scale: selected ? 1.2 : 1 }] }
-      ]}>
-        {emoji}
-      </Text>
-      <Text style={[
-        styles.label,
-        selected && styles.selectedLabel
-      ]}>
-        {label}
-      </Text>
-    </Pressable>
+      <MaterialIcons 
+        name={getMoodIcon()} 
+        size={30} 
+        color={getMoodColor()} 
+      />
+      <Text style={styles.text}>{getMoodText()}</Text>
+    </TouchableOpacity>
   );
 }
 
@@ -60,41 +54,14 @@ const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
     justifyContent: 'center',
-    padding: theme.spacing.md,
-    borderRadius: theme.borderRadius.lg,
-    backgroundColor: theme.colors.card,
-    width: 70,
-    height: 90,
-    margin: theme.spacing.xs,
-    ...theme.shadows.small,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    transition: 'all 0.3s',
+    padding: theme.spacing.sm,
+    borderRadius: theme.borderRadius.md,
+    width: 65,
+    height: 80,
   },
-  selected: {
-    ...theme.shadows.medium,
-    transform: [{ scale: 1.1 }],
-    borderWidth: 0,
-  },
-  pressed: {
-    opacity: 0.9,
-    transform: [{ scale: 0.98 }],
-  },
-  emoji: {
-    fontSize: 32,
-    marginBottom: theme.spacing.xs,
-  },
-  selectedEmoji: {
-    transform: [{ scale: 1.1 }],
-  },
-  label: {
-    fontSize: theme.fontSizes.sm,
-    fontWeight: theme.fontWeights.medium,
-    color: theme.colors.text,
+  text: {
+    fontSize: theme.typography.fontSizes.xs,
+    marginTop: theme.spacing.xs,
     textAlign: 'center',
-  },
-  selectedLabel: {
-    color: 'white',
-    fontWeight: theme.fontWeights.bold,
   },
 });
